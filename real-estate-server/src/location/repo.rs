@@ -1,3 +1,5 @@
+use postgres_types::ToSql;
+
 use crate::{
     database::storage::Storage,
     error::{app_error::DynAppError, default::DefaultAppError},
@@ -51,11 +53,40 @@ impl LocationRepo {
                 app_location 
                     (id, lat, long)
                 VALUES
-                    ($1, $2, $3);",
+                    ($1, $2, $3);"
         );
 
         self.storage
             .exec(cmd, &[&location.id, &location.lat, &location.long])
+            .await
+    }
+
+    pub async fn save_locations(&self, locations: Box<[Location]>) -> Result<u64, DynAppError> {
+        let amount = locations.len();
+
+        let mut values_statement = String::from("VALUES\n   ");
+        for i in 0..amount {
+            let base = i*3;
+            values_statement += format!("(${}, ${}, ${})\n", base+1, base+2, base+3).as_str();
+        }
+        values_statement += ";";
+
+        let cmd = format!(
+            "INSERT INTO
+                app_location 
+                    (id, lat, long)
+                {}", values_statement
+        );
+
+        let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
+        for loc in locations.iter() {
+            params.push(&loc.id);
+            params.push(&loc.lat);
+            params.push(&loc.long);
+        }
+
+        self.storage
+            .exec(cmd, &params)
             .await
     }
 }

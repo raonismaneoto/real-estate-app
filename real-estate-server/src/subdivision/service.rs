@@ -4,8 +4,7 @@ use crate::{
 };
 
 use super::{
-    repo::{self, SubdivisonRepo},
-    subdivision::Subdivision,
+    lot::Lot, repo::{self, SubdivisonRepo}, subdivision::Subdivision
 };
 
 #[derive(Clone)]
@@ -20,7 +19,13 @@ impl SubdivisionService {
         }
     }
 
-    pub async fn create(&self, subdivision: Subdivision) -> Result<String, DynAppError> {}
+    pub async fn create(&self, subdivision: Subdivision) -> Result<String, DynAppError> {
+
+    }
+
+    pub async fn add_lot(&self, lot: Lot) -> Result<String, DynAppError> {
+        
+    }
 
     pub async fn delete(&self, id: String) -> Result<String, DynAppError> {}
 

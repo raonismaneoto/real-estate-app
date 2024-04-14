@@ -1,5 +1,5 @@
 pub struct Subdivision {
-    id: String,
-    name: String,
-    location_id: String,
+    pub id: String,
+    pub name: String,
+    pub location_id: String,
 }
