@@ -1,4 +1,4 @@
 pub mod lot;
-pub mod subdivision;
 mod repo;
 pub mod service;
+pub mod subdivision;
