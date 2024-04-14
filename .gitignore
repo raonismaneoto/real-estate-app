@@ -1,4 +1,4 @@
-real-estate-server/target
+real-estate-server/target/*
 real-estate-ui/node_modules/*
 real-estate-server/.vscode
 real-estate-ui/.vscode
