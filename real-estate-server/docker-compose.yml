@@ -1,0 +1,17 @@
+version: '3.8'
+services:
+  postgis:
+    image: postgis/postgis:latest
+    restart: always
+    environment:
+      POSTGRES_USER:  postgres
+      POSTGRES_DATABASE: postgres
+      POSTGRES_PASSWORD: "park-here-123"
+    ports:
+      - "5432:5432"
+    volumes: 
+      - db:/var/lib/postgresql/data
+      - ./src/database/scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+volumes:
+  db:
+    driver: local
