@@ -1,4 +1,6 @@
-use crate::{database::storage::Storage, error::app_error::DynAppError};
+use postgres::{Row};
+
+use crate::{database::storage::Storage, error::{app_error::DynAppError}};
 
 use super::subdivision::Subdivision;
 
@@ -51,7 +53,21 @@ impl SubdivisonRepo {
     }
 
     pub async fn search_by_name(&self, name: String) -> Result<Vec<Subdivision>, DynAppError> {
+        let cmd = String::from(
+            "
+            SELECT *
+            FROM 
+                subdivision 
+            WHERE
+                POSITION(LOWER($1) in LOWER(s_name));",
+        );
 
+        match self.storage.query(cmd, &[&name]).await {
+            Ok(rows) => {
+                Ok(parse_subdvisions(rows))
+            }
+            Err(err) => Err(err),
+        }
     }
 
     pub async fn search_by_location(
@@ -59,6 +75,47 @@ impl SubdivisonRepo {
         coords: (f64, f64),
         radius: f64
     ) -> Result<Vec<Subdivision>, DynAppError> {
-        
+        let cmd = String::from(
+            "
+            SELECT 
+                *
+            FROM 
+                subdivision sd
+            WHERE 
+                (ST_DistanceSphere(
+                    ST_MakePoint((SELECT long FROM app_location where id = sd.location_id), (SELECT lat FROM app_location where id = sd.location_id)),
+                    ST_MakePoint($1, $2)
+                )) <= $3;",
+        );
+
+        match self.storage
+            .query(
+                cmd,
+                &[
+                    &coords.1,
+                    &coords.0,
+                    &radius
+                ],
+            )
+            .await {
+                Ok(rows) => {
+                    Ok(parse_subdvisions(rows))
+                },
+                Err(err) => Err(err)
+            }
     }
+}
+
+fn parse_subdvisions(rows: Vec<Row>) -> Vec<Subdivision> {
+    let mut result: Vec<Subdivision> = vec![];
+
+    for row in rows.iter() {
+        result.push(Subdivision {
+            id: row.get("id"),
+            location_id: row.get("location_id"),
+            name: row.get("name")
+        })
+    }
+
+    result
 }
