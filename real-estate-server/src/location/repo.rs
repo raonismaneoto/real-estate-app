@@ -7,6 +7,8 @@ use crate::{
 
 use super::location::Location;
 
+
+#[derive(Clone)]
 pub struct LocationRepo {
     storage: Storage,
 }
@@ -67,8 +69,9 @@ impl LocationRepo {
         let mut values_statement = String::from("VALUES\n   ");
         for i in 0..amount {
             let base = i*3;
-            values_statement += format!("(${}, ${}, ${})\n", base+1, base+2, base+3).as_str();
+            values_statement += format!("(${}, ${}, ${}),\n", base+1, base+2, base+3).as_str();
         }
+        
         values_statement += ";";
 
         let cmd = format!(

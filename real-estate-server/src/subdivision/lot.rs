@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct Lot {
     pub area: Box<[String]>,
     pub name: String,

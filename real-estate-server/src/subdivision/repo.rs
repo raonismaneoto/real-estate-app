@@ -1,8 +1,9 @@
 use postgres::{Row};
+use postgres_types::ToSql;
 
 use crate::{database::storage::Storage, error::{app_error::DynAppError}};
 
-use super::subdivision::Subdivision;
+use super::{lot::Lot, subdivision::Subdivision};
 
 #[derive(Clone)]
 pub struct SubdivisonRepo {
@@ -103,6 +104,59 @@ impl SubdivisonRepo {
                 },
                 Err(err) => Err(err)
             }
+    }
+
+    // create a batch of lots assuming that the locations already exists
+    pub async fn create_lots(&self, lots: Box<[Lot]>) -> Result<u64, DynAppError> {
+        let mut amount = lots.len();
+
+        let mut lot_values = String::from("VALUES\n   ");
+        for i in 0..amount {
+            let base = i*2;
+            lot_values += format!("(${}, ${}),\n", base+1, base+2).as_str();
+        }
+        
+        let previous_amount = amount.clone();
+        for lot in lots.iter() {
+            amount += lot.area.len();
+        }
+        
+        let mut lot_locations_values = String::from("VALUES\n   ");
+        for i in previous_amount..amount {
+            let base = i*3;
+            lot_locations_values += format!("(${}, ${}, ${}),\n", base+1, base+2, base+3).as_str();
+        }
+
+        let cmd = format!(
+            "INSERT INTO
+                lot 
+                    (l_name, subdivision_id)
+                {};
+            
+            INSERT INTO
+                lot_location
+                    (l_name, subdivision_id, location_id)
+                {};", lot_values, lot_locations_values
+        );
+
+        let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
+
+        for lot in lots.iter() {
+            params.push(&lot.name);
+            params.push(&lot.subdivision_id);
+        }
+
+        for lot in lots.iter() {
+            for location_id in lot.area.iter() {
+                params.push(&lot.name);
+                params.push(&lot.subdivision_id);
+                params.push(location_id);
+            }
+        }
+
+        self.storage
+            .exec(cmd, &params)
+            .await
     }
 }
 
