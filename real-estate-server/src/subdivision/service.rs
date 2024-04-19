@@ -30,7 +30,8 @@ impl SubdivisionService {
                     id: subdivision_dto.id,
                     location_id: location.id,
                     name: subdivision_dto.name
-                }
+                };
+                
                 match self.repo.create(subdivision.clone()).await {
                     Ok(rows) => Ok(subdivision.id),
                     Err(err) => Err(err)
