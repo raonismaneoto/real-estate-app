@@ -22,21 +22,51 @@ impl SubdivisionService {
         }
     }
 
-    pub async fn create(&self, subdivision: SubdivisionDto) -> Result<String, DynAppError> {
-        match subdivision.lots {
-            Some(lots) => {
-
+    pub async fn create(&self, subdivision_dto: SubdivisionDto) -> Result<String, DynAppError> {
+        let location_result = self.location_service.get_or_create_location(subdivision_dto.location).await;
+        match location_result {
+            Ok(location) => {
+                let subdivision: Subdivision = Subdivision {
+                    id: subdivision_dto.id,
+                    location_id: location.id,
+                    name: subdivision_dto.name
+                }
+                match self.repo.create(subdivision.clone()).await {
+                    Ok(rows) => Ok(subdivision.id),
+                    Err(err) => Err(err)
+                }
             },
-            None => {}
-        }
-        match self.repo.create(subdivision.clone()).await {
-            Ok(rows) => Ok(subdivision.id),
             Err(err) => Err(err)
         }
+        
     }
 
     pub async fn create_lot(&self, lot: LotDto) -> Result<String, DynAppError> {
-        
+        let mut location_ids: Vec<String> = vec![];
+
+        for coordinates in lot.area.iter() {
+            let location = Location {
+                id: format!("{}-{}", coordinates.0.to_string(), coordinates.1.to_string()),
+                lat: coordinates.0,
+                long: coordinates.1
+            };
+
+            match self.location_service.create_location(location.clone()).await {
+                Ok(_) => location_ids.push(location.id),
+                Err(err) => return Err(err)
+            }
+        }
+
+        let lot_entity = Lot {
+            area: location_ids.as_slice().into(),
+            name: cloned_lot.name,
+            subdivision_id: cloned_lot.subdivision_id
+        };
+
+        match self.repo.create_lot(lot_entity).await {
+            Ok(_) => Ok(lots),
+            Err(err) => Err(err)
+        }
     }
 
     pub async fn create_lots(&self, lots_dtos: Box<[LotDto]>) -> Result<Box<Vec<Lot>>, DynAppError> {
