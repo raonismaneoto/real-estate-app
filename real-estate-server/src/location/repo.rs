@@ -7,7 +7,6 @@ use crate::{
 
 use super::location::Location;
 
-
 #[derive(Clone)]
 pub struct LocationRepo {
     storage: Storage,
@@ -28,25 +27,52 @@ impl LocationRepo {
                 id = $1;",
         );
 
-        match self.storage.query(cmd, &[&id]).await {
-            Ok(rows) => {
-                if rows.len() != 1 {
-                    return Err(Box::new(DefaultAppError {
-                        message: Some(format!("Unexpected number of results: {}", rows.len())),
-                        status_code: 500,
-                    }));
-                }
+        let rows = self.storage.query(cmd, &[&id]).await?;
 
-                let location = Location {
-                    id: rows[0].get("id"),
-                    lat: rows[0].get("lat"),
-                    long: rows[0].get("long"),
-                };
-
-                Ok(location)
-            }
-            Err(err) => Err(err),
+        if rows.len() != 1 {
+            return Err(Box::new(DefaultAppError {
+                message: Some(format!("Unexpected number of results: {}", rows.len())),
+                status_code: 500,
+            }));
         }
+
+        let location = Location {
+            id: rows[0].get("id"),
+            lat: rows[0].get("lat"),
+            long: rows[0].get("long"),
+        };
+
+        Ok(location)
+    
+    }
+
+    pub async fn get_location_by_coords(&self, coords: (f64, f64)) -> Result<Location, DynAppError> {
+        let cmd = String::from(
+            "
+            SELECT *
+            FROM 
+                app_location 
+            WHERE
+                lat = $1 and long = $2;",
+        );
+
+        let rows = self.storage.query(cmd, &[&coords.0, &coords.1]).await?;
+        
+        if rows.len() != 1 {
+            return Err(Box::new(DefaultAppError {
+                message: Some(format!("Unexpected number of results: {}", rows.len())),
+                status_code: 500,
+            }));
+        }
+
+        let location = Location {
+            id: rows[0].get("id"),
+            lat: rows[0].get("lat"),
+            long: rows[0].get("long"),
+        };
+
+        Ok(location)
+    
     }
 
     pub async fn save_location(&self, location: Location) -> Result<u64, DynAppError> {
@@ -55,7 +81,7 @@ impl LocationRepo {
                 app_location 
                     (id, lat, long)
                 VALUES
-                    ($1, $2, $3);"
+                    ($1, $2, $3);",
         );
 
         self.storage
@@ -68,17 +94,19 @@ impl LocationRepo {
 
         let mut values_statement = String::from("VALUES\n   ");
         for i in 0..amount {
-            let base = i*3;
-            values_statement += format!("(${}, ${}, ${}),\n", base+1, base+2, base+3).as_str();
+            let base = i * 3;
+            values_statement +=
+                format!("(${}, ${}, ${}),\n", base + 1, base + 2, base + 3).as_str();
         }
-        
+
         values_statement += ";";
 
         let cmd = format!(
             "INSERT INTO
                 app_location 
                     (id, lat, long)
-                {}", values_statement
+                {}",
+            values_statement
         );
 
         let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
@@ -88,8 +116,6 @@ impl LocationRepo {
             params.push(&loc.long);
         }
 
-        self.storage
-            .exec(cmd, &params)
-            .await
+        self.storage.exec(cmd, &params).await
     }
 }
