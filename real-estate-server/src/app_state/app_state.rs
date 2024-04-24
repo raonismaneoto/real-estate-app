@@ -23,9 +23,9 @@ impl AppState {
             SubdivisionService::new(storage.clone(), location_service.clone());
 
         Self {
-            storage: storage,
-            location_service: location_service,
-            subdivision_service: subdivision_service,
+            storage: storage.clone(),
+            location_service: location_service.clone(),
+            subdivision_service: subdivision_service.clone(),
         }
     }
 }

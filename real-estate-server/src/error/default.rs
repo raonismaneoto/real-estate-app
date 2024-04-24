@@ -1,5 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 use super::app_error::AppError;
 
+#[derive(Clone, Serialize, Deserialize)]
 pub struct DefaultAppError {
     pub message: Option<String>,
     pub status_code: i32,
@@ -25,3 +28,6 @@ impl AppError for DefaultAppError {
         )
     }
 }
+
+unsafe impl Send for DefaultAppError {}
+unsafe impl Sync for DefaultAppError {}

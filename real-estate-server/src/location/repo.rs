@@ -43,10 +43,12 @@ impl LocationRepo {
         };
 
         Ok(location)
-    
     }
 
-    pub async fn get_location_by_coords(&self, coords: (f64, f64)) -> Result<Location, DynAppError> {
+    pub async fn get_location_by_coords(
+        &self,
+        coords: (f64, f64),
+    ) -> Result<Location, DynAppError> {
         let cmd = String::from(
             "
             SELECT *
@@ -57,7 +59,7 @@ impl LocationRepo {
         );
 
         let rows = self.storage.query(cmd, &[&coords.0, &coords.1]).await?;
-        
+
         if rows.len() != 1 {
             return Err(Box::new(DefaultAppError {
                 message: Some(format!("Unexpected number of results: {}", rows.len())),
@@ -72,7 +74,6 @@ impl LocationRepo {
         };
 
         Ok(location)
-    
     }
 
     pub async fn save_location(&self, location: Location) -> Result<u64, DynAppError> {

@@ -63,7 +63,7 @@ impl SubdivisonRepo {
         );
 
         let rows = self.storage.query(cmd, &[&name]).await?;
-        
+
         Ok(parse_subdvisions(rows))
     }
 
@@ -89,6 +89,19 @@ impl SubdivisonRepo {
             .storage
             .query(cmd, &[&coords.1, &coords.0, &radius])
             .await?;
+
+        Ok(parse_subdvisions(rows))
+    }
+
+    pub async fn get_all(&self) -> Result<Vec<Subdivision>, DynAppError> {
+        let cmd = String::from(
+            "
+            SELECT *
+            FROM 
+                subdivision;",
+        );
+
+        let rows = self.storage.query(cmd, &[]).await?;
 
         Ok(parse_subdvisions(rows))
     }
@@ -195,7 +208,10 @@ impl SubdivisonRepo {
         ",
         );
 
-        let result = self.storage.query(lot_query_cmd, &[&subdivision_id]).await?;
+        let result = self
+            .storage
+            .query(lot_query_cmd, &[&subdivision_id])
+            .await?;
 
         let lot_location_query_cmd = String::from(
             "
@@ -227,7 +243,7 @@ impl SubdivisonRepo {
                 subdivision_id: row.get("subdivision_id"),
             });
         }
-            
+
         Ok(lots)
     }
 }

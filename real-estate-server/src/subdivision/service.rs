@@ -1,10 +1,16 @@
-use std::vec;
+use std::{
+    borrow::Borrow,
+    future::{self, IntoFuture},
+    vec,
+};
+
+use tokio::try_join;
 
 use crate::{
+    api_contracts::{lot_dto::LotDto, subdivision_dto::SubdivisionDto},
     database::storage::{self, Storage},
     error::app_error::{AppError, DynAppError},
     location::{location::Location, service::LocationService},
-    responses::{lot_dto::LotDto, subdivision_dto::SubdivisionDto},
 };
 
 use super::{
@@ -123,5 +129,46 @@ impl SubdivisionService {
         coords: (f64, f64),
     ) -> Result<Vec<Subdivision>, DynAppError> {
         self.repo.search_by_location(coords, 5000.0).await
+    }
+
+    pub async fn to_dto(&self, subdivision: Subdivision) -> Result<SubdivisionDto, DynAppError> {
+        let saved_lots = self
+            .repo
+            .get_lots_by_subdivision(subdivision.clone().id)
+            .await?;
+        let location = self
+            .location_service
+            .get_location(subdivision.clone().location_id)
+            .await?;
+
+        let mut lot_dtos: Vec<LotDto> = vec![];
+        for lot in saved_lots {
+            let mut locations: Vec<(f64, f64)> = vec![];
+            for loc_id in lot.area.iter() {
+                let maybe_curr_location = self.location_service.get_location(loc_id.clone()).await;
+                if let Ok(curr_location) = maybe_curr_location {
+                    locations.push((curr_location.lat, curr_location.long))
+                }
+            }
+
+            lot_dtos.push(LotDto {
+                id: format!("{}-{}", lot.name, lot.subdivision_id),
+                name: lot.name,
+                subdivision_id: lot.subdivision_id,
+                area: Box::new(locations),
+            })
+        }
+
+        Ok(SubdivisionDto {
+            id: subdivision.clone().id,
+            location: (location.lat, location.long),
+            lots: Some(Box::new(lot_dtos)),
+            name: subdivision.clone().name,
+        })
+    }
+
+    // TODO: implement pagination
+    pub async fn get_all(&self) -> Result<Vec<Subdivision>, DynAppError> {
+        self.repo.get_all().await
     }
 }

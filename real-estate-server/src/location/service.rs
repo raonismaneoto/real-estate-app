@@ -21,7 +21,10 @@ impl LocationService {
         self.repo.get_location(id).await
     }
 
-    pub async fn get_location_by_coords(&self, coords: (f64, f64)) -> Result<Location, DynAppError> {
+    pub async fn get_location_by_coords(
+        &self,
+        coords: (f64, f64),
+    ) -> Result<Location, DynAppError> {
         self.repo.get_location_by_coords(coords).await
     }
 
@@ -50,11 +53,7 @@ impl LocationService {
             Err(err) => {
                 // need to check the error message
                 let created_location = Location {
-                    id: format!(
-                        "{}-{}",
-                        coords.0.to_string(),
-                        coords.1.to_string()
-                    ),
+                    id: format!("{}-{}", coords.0.to_string(), coords.1.to_string()),
                     lat: coords.0,
                     long: coords.1,
                 };
@@ -62,7 +61,7 @@ impl LocationService {
                 self.create_location(created_location.clone()).await?;
 
                 Ok(created_location)
-            } 
+            }
         }
     }
 }
