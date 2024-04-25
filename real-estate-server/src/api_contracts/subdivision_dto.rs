@@ -6,6 +6,6 @@ use super::lot_dto::LotDto;
 pub struct SubdivisionDto {
     pub id: String,
     pub name: String,
-    pub location: (f64, f64),
+    pub area: Box<Vec<(f64, f64)>>,
     pub lots: Option<Box<Vec<LotDto>>>,
 }

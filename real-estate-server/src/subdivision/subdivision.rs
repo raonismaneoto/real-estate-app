@@ -6,5 +6,5 @@ use crate::api_contracts::subdivision_dto::SubdivisionDto;
 pub struct Subdivision {
     pub id: String,
     pub name: String,
-    pub location_id: String,
+    pub area: Box<Vec<String>>,
 }

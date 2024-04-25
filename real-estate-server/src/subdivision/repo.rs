@@ -1,3 +1,5 @@
+use std::vec;
+
 use postgres::Row;
 use postgres_types::ToSql;
 
@@ -16,18 +18,42 @@ impl SubdivisonRepo {
     }
 
     pub async fn create(&self, subdivision: Subdivision) -> Result<u64, DynAppError> {
-        let cmd = String::from(
+        let amount = subdivision.area.len();
+        let start = 2;
+        let mut subdivision_locations_values = String::from("VALUES\n   ");
+        for i in start..amount {
+            let base = if i == start { i } else { i * 2 };
+            subdivision_locations_values +=
+                format!("(${}, ${}),\n", base + 1, base + 2).as_str();
+        }
+
+        let cmd = format!(
             "INSERT INTO
                 subdivision 
-                    (id, s_name, location_id)
+                    (id, s_name)
             VALUES
-                ($1, $2, $3);",
+                ($1, $2);
+                
+            INSERT INTO
+                subdivision_location
+                    (subdivision_id, location_id)
+            {};",
+            subdivision_locations_values
         );
+
+        let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
+        params.push(&subdivision.name);
+        params.push(&subdivision.id);
+
+        for location_id in subdivision.area.iter() {
+            params.push(&subdivision.id);
+            params.push(location_id);
+        }
 
         self.storage
             .exec(
                 cmd,
-                &[&subdivision.id, &subdivision.name, &subdivision.location_id],
+                &params,
             )
             .await
     }
@@ -64,7 +90,37 @@ impl SubdivisonRepo {
 
         let rows = self.storage.query(cmd, &[&name]).await?;
 
-        Ok(parse_subdvisions(rows))
+        let select_subdivision_locations_cmd = String::from(
+            "SELECT 
+                location_id
+            FROM
+                subdivision_location
+            WHERE 
+                subdivision_id = $1;"
+        );
+
+        let mut subdivisions: Vec<Subdivision> = vec![];
+
+        for row in rows.into_iter() {
+            let id: String = row.get("id");
+            let locations = self
+                .storage
+                .query(select_subdivision_locations_cmd.clone(), &[&id])
+                .await?
+                .into_iter()
+                .map(|row| { row.get("location_id")})
+                .collect::<Vec<String>>();
+
+            subdivisions.push(
+                Subdivision {
+                    id: row.get("id"),
+                    area: Box::new(locations),
+                    name: row.get("name")
+                }
+            );
+        }
+
+        Ok(subdivisions)
     }
 
     pub async fn search_by_location(
@@ -85,12 +141,42 @@ impl SubdivisonRepo {
                 )) <= $3;",
         );
 
-        let rows = self
+        let subdivision_rows = self
             .storage
             .query(cmd, &[&coords.1, &coords.0, &radius])
             .await?;
-
-        Ok(parse_subdvisions(rows))
+        
+            let select_subdivision_locations_cmd = String::from(
+                "SELECT 
+                    location_id
+                FROM
+                    subdivision_location
+                WHERE 
+                    subdivision_id = $1;"
+            );
+    
+            let mut subdivisions: Vec<Subdivision> = vec![];
+    
+            for row in subdivision_rows.into_iter() {
+                let id: String = row.get("id");
+                let locations = self
+                    .storage
+                    .query(select_subdivision_locations_cmd.clone(), &[&id])
+                    .await?
+                    .into_iter()
+                    .map(|row| { row.get("location_id")})
+                    .collect::<Vec<String>>();
+    
+                subdivisions.push(
+                    Subdivision {
+                        id: row.get("id"),
+                        area: Box::new(locations),
+                        name: row.get("name")
+                    }
+                );
+            }
+    
+            Ok(subdivisions)
     }
 
     pub async fn get_all(&self) -> Result<Vec<Subdivision>, DynAppError> {
@@ -103,7 +189,37 @@ impl SubdivisonRepo {
 
         let rows = self.storage.query(cmd, &[]).await?;
 
-        Ok(parse_subdvisions(rows))
+        let select_subdivision_locations_cmd = String::from(
+            "SELECT 
+                location_id
+            FROM
+                subdivision_location
+            WHERE 
+                subdivision_id = $1;"
+        );
+
+        let mut subdivisions: Vec<Subdivision> = vec![];
+
+        for row in rows.into_iter() {
+            let id: String = row.get("id");
+            let locations = self
+                .storage
+                .query(select_subdivision_locations_cmd.clone(), &[&id])
+                .await?
+                .into_iter()
+                .map(|row| { row.get("location_id")})
+                .collect::<Vec<String>>();
+
+            subdivisions.push(
+                Subdivision {
+                    id: row.get("id"),
+                    area: Box::new(locations),
+                    name: row.get("name")
+                }
+            );
+        }
+
+        Ok(subdivisions)
     }
 
     // create a batch of lots assuming that the locations already exists
@@ -246,18 +362,4 @@ impl SubdivisonRepo {
 
         Ok(lots)
     }
-}
-
-fn parse_subdvisions(rows: Vec<Row>) -> Vec<Subdivision> {
-    let mut result: Vec<Subdivision> = vec![];
-
-    for row in rows.iter() {
-        result.push(Subdivision {
-            id: row.get("id"),
-            location_id: row.get("location_id"),
-            name: row.get("name"),
-        })
-    }
-
-    result
 }

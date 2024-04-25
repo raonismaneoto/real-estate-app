@@ -6,8 +6,13 @@ create table app_location(
 
 create table subdivision(
     id varchar(255) PRIMARY KEY,
-    s_name varchar(255),
-    location_id varchar(255) references app_location
+    s_name varchar(255)
+);
+
+create table subdivision_location(
+    subdivision_id varchar(255) references subdivision,
+    location_id varchar(255) references app_location,
+    PRIMARY KEY (subdivision_id, location_id)
 );
 
 create table lot(

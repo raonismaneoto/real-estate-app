@@ -34,14 +34,17 @@ impl SubdivisionService {
     }
 
     pub async fn create(&self, subdivision_dto: SubdivisionDto) -> Result<String, DynAppError> {
-        let location = self
-            .location_service
-            .get_or_create_location(subdivision_dto.location)
-            .await?;
+        let mut location_ids: Vec<String> = vec![];
+
+        for coords in subdivision_dto.area.into_iter() {
+            location_ids.push(
+                self.location_service.get_or_create_location(coords).await?.id
+            );
+        }
 
         let subdivision: Subdivision = Subdivision {
             id: subdivision_dto.id,
-            location_id: location.id,
+            area:  Box::new(location_ids),
             name: subdivision_dto.name,
         };
 
@@ -131,14 +134,12 @@ impl SubdivisionService {
         self.repo.search_by_location(coords, 5000.0).await
     }
 
+    // TODO: the repo and the service are calling the location service to retrieve the location
+    // only one needs to do this.
     pub async fn to_dto(&self, subdivision: Subdivision) -> Result<SubdivisionDto, DynAppError> {
         let saved_lots = self
             .repo
             .get_lots_by_subdivision(subdivision.clone().id)
-            .await?;
-        let location = self
-            .location_service
-            .get_location(subdivision.clone().location_id)
             .await?;
 
         let mut lot_dtos: Vec<LotDto> = vec![];
@@ -159,9 +160,19 @@ impl SubdivisionService {
             })
         }
 
+        let mut locations: Vec<Location> = vec![];
+        for location_id in subdivision.clone().area.into_iter() {
+            locations.push(
+                self.location_service.get_location(location_id).await?
+            );
+        }
+
         Ok(SubdivisionDto {
             id: subdivision.clone().id,
-            location: (location.lat, location.long),
+            area: Box::new(locations
+                .into_iter()
+                .map(|location|{ (location.lat, location.long) })
+                .collect::<Vec<(f64,f64)>>()),
             lots: Some(Box::new(lot_dtos)),
             name: subdivision.clone().name,
         })
