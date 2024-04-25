@@ -1,86 +1,57 @@
-import { useState } from "react";
-import { Button, StyleSheet, View } from "react-native";
-import MapView, { LatLng, Polygon } from "react-native-maps";
+import * as React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import Home from './components/Home';
+import { Appbar, Text, Provider } from 'react-native-paper';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { View } from 'react-native';
+import Navigation from './components/Navigation';
+import SubdivisionsList from './components/SubdivisionsList';
+import SubdivisionDetails from './components/SubdivisionDetails';
+import SubdivisionsForm from './components/SubdivisionForm';
+import LotForm from './components/LotForm';
+
+
+
+
+const Stack = createNativeStackNavigator();
 
 const App = () => {
-  const [rotate, setRotate] = useState(true);
-  const [scroll, setScroll] = useState(true);
-  const [drawing, setDrawing] = useState(false);
-  const [currDrawingCoordinates, setCurrentDrawingCoordinates] = useState<LatLng[]>([]);
-
-  const handleOnPanDrag = (ev:any) => {
-    if (drawing)  setCurrentDrawingCoordinates(currDrawingCoordinates.concat([ev.nativeEvent.coordinate as LatLng]));
-  }
-
+  
   return (
-    <View>
-      <MapView 
-        style={styles.map} 
-        onPanDrag={handleOnPanDrag}
-        rotateEnabled={rotate}
-        scrollEnabled={scroll}
-      >
-        {currDrawingCoordinates.length > 0 ? (
-          <>
-            <Polygon 
-              coordinates={currDrawingCoordinates} 
-              strokeColor="blue"
-              strokeWidth={1}
+    <Provider>
+      <SafeAreaProvider>
+        <NavigationContainer>
+          <Stack.Navigator>
+            <Stack.Screen 
+              name="Real Estate"
+              component={Home}
             />
-          </>
-        ) : (<></>)}
-      </MapView>
-      <View style={styles.panel}>
-        {drawing ? (
-          <>
-            <Button onPress={() => {setRotate(true); setScroll(true); setDrawing(false); setCurrentDrawingCoordinates([])}} title="Click here to save the draw"/>
-          </>
-        ) : (
-          <>
-            <Button onPress={() => {setRotate(false); setScroll(false); setDrawing(true)}} title="Click here to draw the map"/>
-          </>
-        )}
-      </View>
-    </View>
-  )
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  map: {
-    width: "100%",
-    height: "100%",
-  },
-  button: {
-    flexDirection: 'column',
-    alignItems: 'center',
-  },
-  panel: {
-    flexDirection: 'column',
-    bottom: '0%',
-    width: '100%',
-    height: '20%',
-    backgroundColor: 'white',
-    position: 'absolute',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 12,
-    paddingBottom: 12,
-    paddingHorizontal: 24,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-
-    elevation: 5,
-  },
-});
+            <Stack.Screen 
+              name="Navigation"
+              component={Navigation}
+            />
+            <Stack.Screen 
+              name="Subdivisions"
+              component={SubdivisionsList}
+            />
+            <Stack.Screen 
+              name="SubdivisionsForm"
+              component={SubdivisionsForm}
+            />
+            <Stack.Screen 
+              name="SubdivisionsDetails"
+              component={SubdivisionDetails}
+            />
+            <Stack.Screen 
+              name="LotForm"
+              component={LotForm}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </Provider>
+  );
+};
 
 export default App;
