@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { Button, DataTable, Dialog, IconButton, Portal, Text } from 'react-native-paper';
+import { TextInput } from 'react-native-paper';
 
 const SubdivisionsList = () => {
   const [page, setPage] = useState<number>(0);
@@ -58,7 +59,7 @@ const SubdivisionsList = () => {
         </DataTable>
         <Portal>
           <Dialog visible={visible} onDismiss={() => setVisible(false)}>
-            <Dialog.Title>Alert</Dialog.Title>
+            <Dialog.Title>Subdivision Creation</Dialog.Title>
             <Dialog.Content>
               <Text variant="bodyMedium">This is simple dialog</Text>
             </Dialog.Content>

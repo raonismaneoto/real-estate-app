@@ -3,7 +3,14 @@ import { Button, StyleSheet, View } from "react-native";
 import MapView, { LatLng, Polygon } from "react-native-maps";
 import { Searchbar } from 'react-native-paper';
 
-const Navigation = () => {
+
+interface NavigationProps {
+  setArea?: (area: [number, number][]) => void,
+  setShowNavigation?: (value: boolean) => void,
+  extendedBehavior?: boolean
+};
+
+const Navigation = ({ setArea, setShowNavigation, extendedBehavior } : NavigationProps) => {
   const [rotate, setRotate] = useState(true);
   const [scroll, setScroll] = useState(true);
   const [drawing, setDrawing] = useState(false);
@@ -12,16 +19,42 @@ const Navigation = () => {
 
   const handleOnPanDrag = (ev:any) => {
     if (drawing) setCurrentDrawingCoordinates(currDrawingCoordinates.concat([ev.nativeEvent.coordinate as LatLng]));
-  }
+  };
+
+  const onStartDrawing = () => {
+    setRotate(false); 
+    setScroll(false); 
+    setDrawing(true)
+  };
+
+  const onEndDrawing = () => {
+    setRotate(true); 
+    setScroll(true); 
+    setDrawing(false); 
+    
+    if (extendedBehavior) {
+      setArea && setArea(currDrawingCoordinates.map(coords => [coords.latitude, coords.longitude]));
+      setCurrentDrawingCoordinates([]);
+      setShowNavigation && setShowNavigation(false);
+      return;
+    }
+
+    setCurrentDrawingCoordinates([]);
+  };
+
 
   return (
     <View>
-      <Searchbar
-        placeholder="Search"
-        onChangeText={setSearchQuery}
-        value={searchQuery}
-        style={styles.searchBar}
-      />
+      {
+        !extendedBehavior ? (
+          <Searchbar
+            placeholder="Search"
+            onChangeText={setSearchQuery}
+            value={searchQuery}
+            style={styles.searchBar}
+          />
+        ) : (<></>)
+      }
       <View key="map">
         <MapView 
           style={styles.map} 
@@ -43,11 +76,11 @@ const Navigation = () => {
       <View style={styles.panel}>
         {drawing ? (
           <>
-            <Button onPress={() => {setRotate(true); setScroll(true); setDrawing(false); setCurrentDrawingCoordinates([])}} title="Click here to save the draw"/>
+            <Button onPress={onEndDrawing} title="Click here to save the draw"/>
           </>
         ) : (
           <>
-            <Button onPress={() => {setRotate(false); setScroll(false); setDrawing(true)}} title="Click here to draw the map"/>
+            <Button onPress={onStartDrawing} title="Click here to draw the map"/>
           </>
         )}
       </View>
