@@ -6,11 +6,11 @@ import { Searchbar } from 'react-native-paper';
 
 interface NavigationProps {
   setArea?: (area: [number, number][]) => void,
-  setShowNavigation?: (value: boolean) => void,
+  changeControl?: () => void,
   extendedBehavior?: boolean
 };
 
-const Navigation = ({ setArea, setShowNavigation, extendedBehavior } : NavigationProps) => {
+const Navigation = ({ setArea, changeControl: setShowNavigation, extendedBehavior } : NavigationProps) => {
   const [rotate, setRotate] = useState(true);
   const [scroll, setScroll] = useState(true);
   const [drawing, setDrawing] = useState(false);
@@ -35,7 +35,7 @@ const Navigation = ({ setArea, setShowNavigation, extendedBehavior } : Navigatio
     if (extendedBehavior) {
       setArea && setArea(currDrawingCoordinates.map(coords => [coords.latitude, coords.longitude]));
       setCurrentDrawingCoordinates([]);
-      setShowNavigation && setShowNavigation(false);
+      setShowNavigation && setShowNavigation();
       return;
     }
 
