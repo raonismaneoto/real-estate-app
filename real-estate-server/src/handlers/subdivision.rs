@@ -22,7 +22,7 @@ use crate::{
     subdivision::{self, lot::Lot, subdivision::Subdivision},
 };
 
-#[debug_handler]
+// #[debug_handler]
 pub async fn subdivision_creation_handler(
     State(app_state): State<Arc<AppState>>,
     Json(payload): Json<SubdivisionDto>
@@ -33,7 +33,7 @@ pub async fn subdivision_creation_handler(
     }
 }
 
-#[debug_handler]
+// #[debug_handler]
 pub async fn lot_creation_handler(
     State(app_state): State<Arc<AppState>>,
     Path(subdivision_id): Path<String>,
@@ -45,7 +45,7 @@ pub async fn lot_creation_handler(
     }
 }
 
-#[debug_handler]
+// #[debug_handler]
 pub async fn lots_creation_handler(
     State(app_state): State<Arc<AppState>>,
     Path(subdivision_id): Path<String>,
@@ -62,7 +62,7 @@ pub async fn lots_creation_handler(
     }
 }
 
-#[debug_handler]
+// #[debug_handler]
 pub async fn subdivision_listing_handler(
     State(app_state): State<Arc<AppState>>
 ) -> Response {

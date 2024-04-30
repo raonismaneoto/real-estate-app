@@ -27,7 +27,7 @@ create table lot_location(
     location_id varchar(255) references app_location,
     FOREIGN KEY (l_name, subdivision_id) references lot (l_name, subdivision_id),
     PRIMARY KEY(l_name, subdivision_id, location_id)
-)
+);
 
 create table app_user(
     id varchar(255),

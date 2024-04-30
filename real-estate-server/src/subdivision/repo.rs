@@ -17,43 +17,35 @@ impl SubdivisonRepo {
         Self { storage: storage }
     }
 
-    pub async fn create(&self, subdivision: Subdivision) -> Result<u64, DynAppError> {
-        let amount = subdivision.area.len();
-        let start = 2;
+    pub async fn create(&self, subdivision: Subdivision) -> Result<(), DynAppError> {
         let mut subdivision_locations_values = String::from("VALUES\n   ");
-        for i in start..amount {
-            let base = if i == start { i } else { i * 2 };
+        for location_id in subdivision.area.into_iter() {
             subdivision_locations_values +=
-                format!("(${}, ${}),\n", base + 1, base + 2).as_str();
+                format!("('{}', '{}'),\n", subdivision.id, location_id).as_str();
         }
 
+        subdivision_locations_values = subdivision_locations_values.trim_end().to_string();
+        subdivision_locations_values.pop();
+        
         let cmd = format!(
             "INSERT INTO
                 subdivision 
                     (id, s_name)
             VALUES
-                ($1, $2);
+                ('{}', '{}');
                 
             INSERT INTO
                 subdivision_location
                     (subdivision_id, location_id)
             {};",
+            subdivision.id,
+            subdivision.name,
             subdivision_locations_values
         );
 
-        let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
-        params.push(&subdivision.name);
-        params.push(&subdivision.id);
-
-        for location_id in subdivision.area.iter() {
-            params.push(&subdivision.id);
-            params.push(location_id);
-        }
-
         self.storage
-            .exec(
+            .batch_exec(
                 cmd,
-                &params,
             )
             .await
     }
@@ -207,14 +199,14 @@ impl SubdivisonRepo {
                 .query(select_subdivision_locations_cmd.clone(), &[&id])
                 .await?
                 .into_iter()
-                .map(|row| { row.get("location_id")})
+                .map(|inner_row| { inner_row.get("location_id")})
                 .collect::<Vec<String>>();
 
             subdivisions.push(
                 Subdivision {
                     id: row.get("id"),
                     area: Box::new(locations),
-                    name: row.get("name")
+                    name: row.get("s_name")
                 }
             );
         }
@@ -223,26 +215,22 @@ impl SubdivisonRepo {
     }
 
     // create a batch of lots assuming that the locations already exists
-    pub async fn create_lots(&self, lots: Box<[Lot]>) -> Result<u64, DynAppError> {
-        let mut amount = lots.len();
-
+    pub async fn create_lots(&self, lots: Box<[Lot]>) -> Result<(), DynAppError> {
         let mut lot_values = String::from("VALUES\n   ");
-        for i in 0..amount {
-            let base = i * 2;
-            lot_values += format!("(${}, ${}),\n", base + 1, base + 2).as_str();
-        }
-
-        let previous_amount = amount.clone();
-        for lot in lots.iter() {
-            amount += lot.area.len();
-        }
-
         let mut lot_locations_values = String::from("VALUES\n   ");
-        for i in previous_amount * 2 + 1..amount {
-            let base = if i == previous_amount { i } else { i * 3 };
-            lot_locations_values +=
-                format!("(${}, ${}, ${}),\n", base + 1, base + 2, base + 3).as_str();
+        for lot in lots.into_iter() {
+            lot_values += format!("(${}, ${}),\n", lot.name, lot.subdivision_id).as_str();
+            for location_id in lot.clone().area.into_iter() {
+                lot_locations_values +=
+                    format!("(${}, ${}, ${}),\n", lot.name, lot.subdivision_id, location_id).as_str();
+            }
         }
+
+        lot_values = lot_values.trim_end().to_string();
+        lot_values.pop();
+        lot_locations_values = lot_locations_values.trim_end().to_string();
+        lot_locations_values.pop();
+        
 
         let cmd = format!(
             "INSERT INTO
@@ -257,59 +245,36 @@ impl SubdivisonRepo {
             lot_values, lot_locations_values
         );
 
-        let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
-
-        for lot in lots.iter() {
-            params.push(&lot.name);
-            params.push(&lot.subdivision_id);
-        }
-
-        for lot in lots.iter() {
-            for location_id in lot.area.iter() {
-                params.push(&lot.name);
-                params.push(&lot.subdivision_id);
-                params.push(location_id);
-            }
-        }
-
-        self.storage.exec(cmd, &params).await
+        self.storage.batch_exec(cmd).await
     }
 
-    pub async fn create_lot(&self, lot: Lot) -> Result<u64, DynAppError> {
-        let amount = lot.area.len();
-        let start = 3;
+    pub async fn create_lot(&self, lot: Lot) -> Result<(), DynAppError> {
         let mut lot_locations_values = String::from("VALUES\n   ");
-        for i in start..amount {
-            let base = if i == start { i } else { i * 3 };
+        for location_id in lot.area.into_iter() {
             lot_locations_values +=
-                format!("(${}, ${}, ${}),\n", base + 1, base + 2, base + 3).as_str();
+                format!("({}, {}, {}),\n", lot.name, lot.subdivision_id, location_id).as_str();
         }
+
+        lot_locations_values = lot_locations_values.trim_end().to_string();
+        lot_locations_values.pop();
 
         let cmd = format!(
             "INSERT INTO
                 lot 
                     (l_name, subdivision_id)
             VALUES
-                ($1, $2);
+                ({}, {});
                 
             INSERT INTO
                 lot_location
                     (l_name, subdivison_id, location_id)
             {};",
+            lot.name,
+            lot.subdivision_id,
             lot_locations_values
         );
 
-        let mut params: Vec<&(dyn ToSql + Sync)> = vec![];
-        params.push(&lot.name);
-        params.push(&lot.subdivision_id);
-
-        for location_id in lot.area.iter() {
-            params.push(&lot.name);
-            params.push(&lot.subdivision_id);
-            params.push(location_id);
-        }
-
-        self.storage.exec(cmd, &params).await
+        self.storage.batch_exec(cmd).await
     }
 
     pub async fn get_lots_by_subdivision(

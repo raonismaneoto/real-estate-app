@@ -3,7 +3,7 @@ import axios, { Method } from "axios";
 // import * as Keychain from 'react-native-keychain';
 
 
-const BACKEND_URL = 'http://10.0.2.2:8000/api/real-estate';
+const BACKEND_URL = 'http://192.168.0.7:5000/api/real-estate';
 
 const httpMethodsMap : any = {
     'GET': axios.get,
@@ -26,7 +26,7 @@ const httpMethodsMap : any = {
 
 export const noBodyRequest = async (method:string, resource:string, customHeaders:object = {}) => {
     // const headers = await getHeaders(customHeaders);
-
+    
     try {
         let response = await httpMethodsMap[method](
             `${BACKEND_URL}/${resource}`,
@@ -39,7 +39,8 @@ export const noBodyRequest = async (method:string, resource:string, customHeader
 }
 
 export const request = async (method:string, resource:string, body:object, customHeaders:object = {}) => {  
-    console.log(body);  
+    console.log(body);
+    console.log(method);
     try {
         let response = undefined;
         
@@ -49,8 +50,9 @@ export const request = async (method:string, resource:string, body:object, custo
         )
 
         return {'response': response, 'error': false};
-    } catch (error) {
-        console.log(error)
+    } catch (error:any) {
+        console.log(error.message)
+        console.log(error.response)
         return {'response': error, 'error': true} 
     }
 }

@@ -3,7 +3,7 @@ import { StyleSheet, View } from "react-native";
 import { Button, DataTable, Dialog, IconButton, Portal, Text } from 'react-native-paper';
 import { TextInput } from 'react-native-paper';
 import Navigation from "./Navigation";
-import { request } from "../services/httpService";
+import { noBodyRequest, request } from "../services/httpService";
 
 const SubdivisionsList = () => {
   const [page, setPage] = useState<number>(0);
@@ -12,34 +12,48 @@ const SubdivisionsList = () => {
     numberOfItemsPerPageList[0]
   );
   const [visible, setVisible] = useState(false);
-  const [items] = useState([]);
   const [subdvisionName, setSubdivisionName] = useState('');
   const [subdvisionArea, setSubdivisionArea] = useState<[number,number][]>([]);
   const [showNavigation, setShowNavigation] = useState(false);
+  const [subdivisions, setSubdivisions] = useState<Subdivision[]>([]);
 
   const from = page * itemsPerPage;
-  const to = Math.min((page + 1) * itemsPerPage, items.length);
+  const to = Math.min((page + 1) * itemsPerPage, subdivisions.length);
 
   useEffect(() => {
     setPage(0);
   }, [itemsPerPage]);
 
+  useEffect(() => {
+    const getSubdivisions = async () => {
+      const response:any = await noBodyRequest('GET', 'subdivisions');
+
+      if (response.error) {
+        alert('error on subdivisions retrieval')
+      } else {
+        console.log(response);
+        console.log(response.data);
+        setSubdivisions(response.response.data);
+      }
+    }
+
+    getSubdivisions();
+  }, [])
+
   const onSubmit = async () => {
-    try {
-      const response = await request(
+      const response:any = await request(
         'POST', 
         'subdivisions', 
         {name : subdvisionName, id: subdvisionName, area: subdvisionArea}
       );
 
-      console.log(response);
-      console.log(response.response);
-      alert('criado com sucesso')
+      if (response.error) {
+        alert('error on creation')
+      } else {
+        alert('criado com sucesso')
+      }
+
       setVisible(false);
-    } catch (error:any) {
-      console.log(error.response);
-      alert(error)
-    }
   };
 
   return (
@@ -63,10 +77,10 @@ const SubdivisionsList = () => {
                   <DataTable.Cell>Mocked name</DataTable.Cell>
                   <DataTable.Cell numeric>0</DataTable.Cell>
                   </DataTable.Row>
-              {items.slice(from, to).map((item) => (
+              {subdivisions.slice(from, to).map((item) => (
                   <DataTable.Row key="">
-                  <DataTable.Cell>Mocked name</DataTable.Cell>
-                  <DataTable.Cell numeric>0</DataTable.Cell>
+                  <DataTable.Cell>{item.name}</DataTable.Cell>
+                  <DataTable.Cell numeric>{item.lots.length}</DataTable.Cell>
                   </DataTable.Row>
               ))}
 
@@ -74,9 +88,9 @@ const SubdivisionsList = () => {
 
               <DataTable.Pagination
                   page={page}
-                  numberOfPages={Math.ceil(items.length / itemsPerPage)}
+                  numberOfPages={Math.ceil(subdivisions.length / itemsPerPage)}
                   onPageChange={(page) => setPage(page)}
-                  label={`${from + 1}-${to} of ${items.length}`}
+                  label={`${from + 1}-${to} of ${subdivisions.length}`}
                   numberOfItemsPerPageList={numberOfItemsPerPageList}
                   numberOfItemsPerPage={itemsPerPage}
                   onItemsPerPageChange={onItemsPerPageChange}

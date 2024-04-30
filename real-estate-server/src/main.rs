@@ -40,7 +40,7 @@ async fn start_web_server() -> Result<(), Error> {
     // .route_layer(map_request_with_state(app_state.clone(), auth_handler))
     .with_state(app_state);
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
+    let addr = SocketAddr::from(([192, 168, 0, 7], 5000));
     let listener = TcpListener::bind(&addr).await.unwrap();
 
     println!("listening on {}", addr);
