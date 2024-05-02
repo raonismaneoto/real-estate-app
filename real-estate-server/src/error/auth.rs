@@ -54,5 +54,4 @@ impl AppError for AuthError {
     }
 }
 
-
 unsafe impl Send for AuthError {}

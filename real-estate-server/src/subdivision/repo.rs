@@ -26,7 +26,7 @@ impl SubdivisonRepo {
 
         subdivision_locations_values = subdivision_locations_values.trim_end().to_string();
         subdivision_locations_values.pop();
-        
+
         let cmd = format!(
             "INSERT INTO
                 subdivision 
@@ -38,16 +38,10 @@ impl SubdivisonRepo {
                 subdivision_location
                     (subdivision_id, location_id)
             {};",
-            subdivision.id,
-            subdivision.name,
-            subdivision_locations_values
+            subdivision.id, subdivision.name, subdivision_locations_values
         );
 
-        self.storage
-            .batch_exec(
-                cmd,
-            )
-            .await
+        self.storage.batch_exec(cmd).await
     }
 
     pub async fn delete(&self, id: String) -> Result<u64, DynAppError> {
@@ -88,7 +82,7 @@ impl SubdivisonRepo {
             FROM
                 subdivision_location
             WHERE 
-                subdivision_id = $1;"
+                subdivision_id = $1;",
         );
 
         let mut subdivisions: Vec<Subdivision> = vec![];
@@ -100,16 +94,14 @@ impl SubdivisonRepo {
                 .query(select_subdivision_locations_cmd.clone(), &[&id])
                 .await?
                 .into_iter()
-                .map(|row| { row.get("location_id")})
+                .map(|row| row.get("location_id"))
                 .collect::<Vec<String>>();
 
-            subdivisions.push(
-                Subdivision {
-                    id: row.get("id"),
-                    area: Box::new(locations),
-                    name: row.get("name")
-                }
-            );
+            subdivisions.push(Subdivision {
+                id: row.get("id"),
+                area: Box::new(locations),
+                name: row.get("name"),
+            });
         }
 
         Ok(subdivisions)
@@ -128,7 +120,7 @@ impl SubdivisonRepo {
                 subdivision sd
             WHERE 
                 (ST_DistanceSphere(
-                    ST_MakePoint((SELECT long FROM app_location where id = sd.location_id), (SELECT lat FROM app_location where id = sd.location_id)),
+                    ST_MakePoint((SELECT long FROM app_location where id = (SELECT location_id from subdivision_location where subdivision_id = sd.id LIMIT 1)), (SELECT lat FROM app_location where id = (SELECT location_id from subdivision_location where subdivision_id = sd.id LIMIT 1))),
                     ST_MakePoint($1, $2)
                 )) <= $3;",
         );
@@ -137,38 +129,36 @@ impl SubdivisonRepo {
             .storage
             .query(cmd, &[&coords.1, &coords.0, &radius])
             .await?;
-        
-            let select_subdivision_locations_cmd = String::from(
-                "SELECT 
+
+        let select_subdivision_locations_cmd = String::from(
+            "SELECT 
                     location_id
                 FROM
                     subdivision_location
                 WHERE 
-                    subdivision_id = $1;"
-            );
-    
-            let mut subdivisions: Vec<Subdivision> = vec![];
-    
-            for row in subdivision_rows.into_iter() {
-                let id: String = row.get("id");
-                let locations = self
-                    .storage
-                    .query(select_subdivision_locations_cmd.clone(), &[&id])
-                    .await?
-                    .into_iter()
-                    .map(|row| { row.get("location_id")})
-                    .collect::<Vec<String>>();
-    
-                subdivisions.push(
-                    Subdivision {
-                        id: row.get("id"),
-                        area: Box::new(locations),
-                        name: row.get("name")
-                    }
-                );
-            }
-    
-            Ok(subdivisions)
+                    subdivision_id = $1;",
+        );
+
+        let mut subdivisions: Vec<Subdivision> = vec![];
+
+        for row in subdivision_rows.into_iter() {
+            let id: String = row.get("id");
+            let locations = self
+                .storage
+                .query(select_subdivision_locations_cmd.clone(), &[&id])
+                .await?
+                .into_iter()
+                .map(|row| row.get("location_id"))
+                .collect::<Vec<String>>();
+
+            subdivisions.push(Subdivision {
+                id: row.get("id"),
+                area: Box::new(locations),
+                name: row.get("name"),
+            });
+        }
+
+        Ok(subdivisions)
     }
 
     pub async fn get_all(&self) -> Result<Vec<Subdivision>, DynAppError> {
@@ -187,7 +177,7 @@ impl SubdivisonRepo {
             FROM
                 subdivision_location
             WHERE 
-                subdivision_id = $1;"
+                subdivision_id = $1;",
         );
 
         let mut subdivisions: Vec<Subdivision> = vec![];
@@ -199,16 +189,14 @@ impl SubdivisonRepo {
                 .query(select_subdivision_locations_cmd.clone(), &[&id])
                 .await?
                 .into_iter()
-                .map(|inner_row| { inner_row.get("location_id")})
+                .map(|inner_row| inner_row.get("location_id"))
                 .collect::<Vec<String>>();
 
-            subdivisions.push(
-                Subdivision {
-                    id: row.get("id"),
-                    area: Box::new(locations),
-                    name: row.get("s_name")
-                }
-            );
+            subdivisions.push(Subdivision {
+                id: row.get("id"),
+                area: Box::new(locations),
+                name: row.get("s_name"),
+            });
         }
 
         Ok(subdivisions)
@@ -221,8 +209,11 @@ impl SubdivisonRepo {
         for lot in lots.into_iter() {
             lot_values += format!("(${}, ${}),\n", lot.name, lot.subdivision_id).as_str();
             for location_id in lot.clone().area.into_iter() {
-                lot_locations_values +=
-                    format!("(${}, ${}, ${}),\n", lot.name, lot.subdivision_id, location_id).as_str();
+                lot_locations_values += format!(
+                    "(${}, ${}, ${}),\n",
+                    lot.name, lot.subdivision_id, location_id
+                )
+                .as_str();
             }
         }
 
@@ -230,7 +221,6 @@ impl SubdivisonRepo {
         lot_values.pop();
         lot_locations_values = lot_locations_values.trim_end().to_string();
         lot_locations_values.pop();
-        
 
         let cmd = format!(
             "INSERT INTO
@@ -269,9 +259,7 @@ impl SubdivisonRepo {
                 lot_location
                     (l_name, subdivison_id, location_id)
             {};",
-            lot.name,
-            lot.subdivision_id,
-            lot_locations_values
+            lot.name, lot.subdivision_id, lot_locations_values
         );
 
         self.storage.batch_exec(cmd).await

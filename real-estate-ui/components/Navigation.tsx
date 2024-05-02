@@ -70,7 +70,7 @@ const Navigation = ({ setArea, changeControl: setShowNavigation, extendedBehavio
     if (searchTerm) {
       searchQueryParam = `name=${searchTerm}`
     } else {
-      searchQueryParam = `coords=${[currentLocation.latitude, currentLocation.longitude]}`
+      searchQueryParam = `lat=${currentLocation.latitude}&long=${currentLocation.longitude}`
     }
 
     const response : any = noBodyRequest('GET', `subdivisions/search?${searchQueryParam}`)
@@ -141,6 +141,17 @@ const Navigation = ({ setArea, changeControl: setShowNavigation, extendedBehavio
               }}
               title="Your Location"
             />
+            {/* CONSIDER POLYGONS HERE, NOT MARKERS {subdivisions.map(each => (
+              <Marker 
+                key={each.id}
+                coordinate={{
+                  latitude: initialRegion.latitude,
+                  longitude: initialRegion.longitude,
+                }}
+                title="Your Location"
+              />
+            )
+            )} */}
             {currDrawingCoordinates.length > 0 ? (
               <>
                 <Polygon 

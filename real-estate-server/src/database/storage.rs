@@ -32,7 +32,7 @@ impl Storage {
                         eprintln!("connection error: {}", e);
                     }
                 });
-                
+
                 match client.execute(&cmd, &cmd_params).await {
                     Ok(lines) => Ok(lines),
                     Err(error) => Err(Box::new(DefaultAppError {
@@ -48,10 +48,7 @@ impl Storage {
         }
     }
 
-    pub async fn batch_exec(
-        &self,
-        cmd: String,
-    ) -> Result<(), DynAppError> {
+    pub async fn batch_exec(&self, cmd: String) -> Result<(), DynAppError> {
         let connection_result = tokio_postgres::connect(&self.connection_string, NoTls).await;
 
         match connection_result {
@@ -61,7 +58,7 @@ impl Storage {
                         eprintln!("connection error: {}", e);
                     }
                 });
-                
+
                 match client.batch_execute(&cmd).await {
                     Ok(_) => Ok(()),
                     Err(error) => Err(Box::new(DefaultAppError {

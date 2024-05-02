@@ -38,13 +38,16 @@ impl SubdivisionService {
 
         for coords in subdivision_dto.area.into_iter() {
             location_ids.push(
-                self.location_service.get_or_create_location(coords).await?.id
+                self.location_service
+                    .get_or_create_location(coords)
+                    .await?
+                    .id,
             );
         }
 
         let subdivision: Subdivision = Subdivision {
             id: subdivision_dto.id,
-            area:  Box::new(location_ids),
+            area: Box::new(location_ids),
             name: subdivision_dto.name,
         };
 
@@ -162,17 +165,17 @@ impl SubdivisionService {
 
         let mut locations: Vec<Location> = vec![];
         for location_id in subdivision.clone().area.into_iter() {
-            locations.push(
-                self.location_service.get_location(location_id).await?
-            );
+            locations.push(self.location_service.get_location(location_id).await?);
         }
 
         Ok(SubdivisionDto {
             id: subdivision.clone().id,
-            area: Box::new(locations
-                .into_iter()
-                .map(|location|{ (location.lat, location.long) })
-                .collect::<Vec<(f64,f64)>>()),
+            area: Box::new(
+                locations
+                    .into_iter()
+                    .map(|location| (location.lat, location.long))
+                    .collect::<Vec<(f64, f64)>>(),
+            ),
             lots: Some(Box::new(lot_dtos)),
             name: subdivision.clone().name,
         })

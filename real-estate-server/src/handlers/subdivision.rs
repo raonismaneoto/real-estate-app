@@ -25,11 +25,11 @@ use crate::{
 // #[debug_handler]
 pub async fn subdivision_creation_handler(
     State(app_state): State<Arc<AppState>>,
-    Json(payload): Json<SubdivisionDto>
+    Json(payload): Json<SubdivisionDto>,
 ) -> Response {
     match app_state.subdivision_service.create(payload).await {
         Ok(id) => Json(id).into_response(),
-        Err(err) => get_error_response(err)
+        Err(err) => get_error_response(err),
     }
 }
 
@@ -41,7 +41,7 @@ pub async fn lot_creation_handler(
 ) -> Response {
     match app_state.subdivision_service.create_lot(payload).await {
         Ok(id) => Json(id).into_response(),
-        Err(err) => get_error_response(err)
+        Err(err) => get_error_response(err),
     }
 }
 
@@ -63,28 +63,30 @@ pub async fn lots_creation_handler(
 }
 
 // #[debug_handler]
-pub async fn subdivision_listing_handler(
-    State(app_state): State<Arc<AppState>>
-) -> Response {
+pub async fn subdivision_listing_handler(State(app_state): State<Arc<AppState>>) -> Response {
     match app_state.subdivision_service.get_all().await {
         Ok(subdivisions) => {
             let mut dtos: Vec<SubdivisionDto> = vec![];
-            
+
             for subdivision in subdivisions.iter() {
-                if let Ok(dto) = app_state.subdivision_service.to_dto(subdivision.clone()).await {
+                if let Ok(dto) = app_state
+                    .subdivision_service
+                    .to_dto(subdivision.clone())
+                    .await
+                {
                     dtos.push(dto);
                 }
             }
 
             Json(dtos).into_response()
-        },
+        }
         Err(err) => get_error_response(err),
     }
 }
 
 pub async fn subdivision_searching_handler(
     State(app_state): State<Arc<AppState>>,
-    params: Query<SearchSubdivisionParams>,
+    Query(params): Query<SearchSubdivisionParams>,
 ) -> Response {
     match params.name.clone() {
         Some(name) => {
@@ -93,46 +95,63 @@ pub async fn subdivision_searching_handler(
             match maybe_subdivisions {
                 Ok(subdivisions) => {
                     let mut dtos: Vec<SubdivisionDto> = vec![];
-                    
+
                     for subdivision in subdivisions.iter() {
-                        if let Ok(dto) = app_state.subdivision_service.to_dto(subdivision.clone()).await {
+                        if let Ok(dto) = app_state
+                            .subdivision_service
+                            .to_dto(subdivision.clone())
+                            .await
+                        {
                             dtos.push(dto);
                         }
                     }
-        
-                    return Json(dtos).into_response()
-                },
+
+                    return Json(dtos).into_response();
+                }
                 Err(err) => return get_error_response(err),
             };
         }
-        None => match params.coords {
+        None => match params.lat {
             None => {
                 return get_error_response(Box::new(DefaultAppError {
-                    message: Some(String::from("Invalid searching params")),
+                    message: Some(String::from("Invalid searching params. Missing name and geolocation data")),
                     status_code: 500,
                 }))
             }
-            Some(coords) => {
-                let maybe_subdivisions = app_state
-                    .subdivision_service
-                    .search_by_location(coords)
-                    .await;
+            Some(lat) => match params.long {
+                Some(long) => {
+                    let coords = (lat, long);
+                    let maybe_subdivisions = app_state
+                        .subdivision_service
+                        .search_by_location(coords)
+                        .await;
 
-                match maybe_subdivisions {
-                    Ok(subdivisions) => {
-                        let mut dtos: Vec<SubdivisionDto> = vec![];
-                        
-                        for subdivision in subdivisions.iter() {
-                            if let Ok(dto) = app_state.subdivision_service.to_dto(subdivision.clone()).await {
-                                dtos.push(dto);
+                    match maybe_subdivisions {
+                        Ok(subdivisions) => {
+                            let mut dtos: Vec<SubdivisionDto> = vec![];
+
+                            for subdivision in subdivisions.iter() {
+                                if let Ok(dto) = app_state
+                                    .subdivision_service
+                                    .to_dto(subdivision.clone())
+                                    .await
+                                {
+                                    dtos.push(dto);
+                                }
                             }
+
+                            return Json(dtos).into_response();
                         }
-            
-                        return Json(dtos).into_response()
-                    },
-                    Err(err) => return get_error_response(err),
-                };
-            }
+                        Err(err) => return get_error_response(err),
+                    }
+                }
+                None => {
+                    return get_error_response(Box::new(DefaultAppError {
+                        message: Some(String::from("Invalid searching params. Missing long value")),
+                        status_code: 500,
+                    }))
+                }
+            },
         },
     }
 }

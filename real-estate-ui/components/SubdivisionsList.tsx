@@ -39,16 +39,18 @@ const SubdivisionsList = () => {
   }, [])
 
   const onSubmit = async () => {
+      const subdivision : Subdivision = {name : subdvisionName, id: subdvisionName, area: subdvisionArea, lots:[]};
       const response:any = await request(
         'POST', 
         'subdivisions', 
-        {name : subdvisionName, id: subdvisionName, area: subdvisionArea}
+        subdivision
       );
 
       if (response.error) {
         alert('error on creation')
       } else {
         alert('criado com sucesso')
+        setSubdivisions([...subdivisions, subdivision])
       }
 
       setVisible(false);
@@ -76,7 +78,7 @@ const SubdivisionsList = () => {
                   <DataTable.Cell numeric>0</DataTable.Cell>
                   </DataTable.Row>
               {subdivisions.slice(from, to).map((item) => (
-                  <DataTable.Row key="">
+                  <DataTable.Row key={item.id}>
                   <DataTable.Cell>{item.name}</DataTable.Cell>
                   <DataTable.Cell numeric>{item.lots.length}</DataTable.Cell>
                   </DataTable.Row>
