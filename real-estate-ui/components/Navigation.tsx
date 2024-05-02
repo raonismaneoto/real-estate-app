@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, StyleSheet, View } from "react-native";
-import MapView, { LatLng, Polygon } from "react-native-maps";
+import MapView, { LatLng, Marker, Polygon, Region } from "react-native-maps";
 import { Searchbar } from 'react-native-paper';
-
+import * as Location from "expo-location";
+import { noBodyRequest } from "../services/httpService";
 
 interface NavigationProps {
   setArea?: (area: [number, number][]) => void,
@@ -16,6 +17,72 @@ const Navigation = ({ setArea, changeControl: setShowNavigation, extendedBehavio
   const [drawing, setDrawing] = useState(false);
   const [currDrawingCoordinates, setCurrentDrawingCoordinates] = useState<LatLng[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentLocation, setCurrentLocation] = useState<Location.LocationObjectCoords>({latitude: 0, longitude: 0, altitude: null, accuracy: null, altitudeAccuracy: null,heading: null, speed: null});
+  const [initialRegion, setInitialRegion] = useState<Region>({latitude: 0, longitude: 0, latitudeDelta: 0, longitudeDelta:0});
+  const [subdivisions, setSubdivisions] = useState<Subdivision[]>([]);
+  const [hasSearched, setHasSearched] = useState(false);
+
+  useEffect(() => {
+    const getLocation = async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+
+      if (status !== "granted") {
+        console.log("Permission to access location was denied");
+        return;
+      }
+
+      await Location.watchPositionAsync({
+        accuracy:Location.Accuracy.Balanced,
+        timeInterval: 10000,
+        distanceInterval: 50,
+      }, (newLocation) => {
+        console.log(newLocation)
+        setCurrentLocation(newLocation.coords);
+        setInitialRegion({
+          ...newLocation.coords,
+          latitudeDelta: 0.1,
+          longitudeDelta: 0.1,
+        });
+      });
+    };
+
+    getLocation();
+  }, []);
+
+  useEffect(() => {
+    if (!hasSearched) {
+      searchSubdivisions();
+    }
+  }, [currentLocation])
+
+  useEffect(() => {
+    if (!hasSearched) {
+      setHasSearched(true);
+    } 
+
+    setTimeout(() => {
+      searchSubdivisions(searchQuery);
+    }, 3000);
+  }, [hasSearched])
+
+  const searchSubdivisions = async (searchTerm: string | undefined = undefined) => {
+    let searchQueryParam = "";
+    if (searchTerm) {
+      searchQueryParam = `name=${searchTerm}`
+    } else {
+      searchQueryParam = `coords=${[currentLocation.latitude, currentLocation.longitude]}`
+    }
+
+    const response : any = noBodyRequest('GET', `subdivisions/search?${searchQueryParam}`)
+
+    console.log(response);
+    console.log(response.data);
+    console.log(response.message);
+
+    if (response.data) {
+      setSubdivisions(response.data);
+    }
+  };
 
   const handleOnPanDrag = (ev:any) => {
     if (drawing) setCurrentDrawingCoordinates(currDrawingCoordinates.concat([ev.nativeEvent.coordinate as LatLng]));
@@ -42,49 +109,63 @@ const Navigation = ({ setArea, changeControl: setShowNavigation, extendedBehavio
     setCurrentDrawingCoordinates([]);
   };
 
+  const isInitialRegionSet = () => initialRegion.latitude !== 0 && initialRegion.longitude !== 0;
 
   return (
-    <View>
-      {
-        !extendedBehavior ? (
-          <Searchbar
-            placeholder="Search"
-            onChangeText={setSearchQuery}
-            value={searchQuery}
-            style={styles.searchBar}
-          />
-        ) : (<></>)
-      }
-      <View key="map">
-        <MapView 
-          style={styles.map} 
-          onPanDrag={handleOnPanDrag}
-          rotateEnabled={rotate}
-          scrollEnabled={scroll}
-        >
-          {currDrawingCoordinates.length > 0 ? (
+    <>
+      {isInitialRegionSet() && (
+        <View>
+        {
+          !extendedBehavior ? (
+            <Searchbar
+              placeholder="Search"
+              onChangeText={setSearchQuery}
+              value={searchQuery}
+              style={styles.searchBar}
+            />
+          ) : (<></>)
+        }
+        <View key="map">
+          <MapView 
+            style={styles.map} 
+            onPanDrag={handleOnPanDrag}
+            rotateEnabled={rotate}
+            scrollEnabled={scroll}
+            initialRegion={initialRegion}
+          >
+            <Marker 
+              key="main"
+              coordinate={{
+                latitude: initialRegion.latitude,
+                longitude: initialRegion.longitude,
+              }}
+              title="Your Location"
+            />
+            {currDrawingCoordinates.length > 0 ? (
+              <>
+                <Polygon 
+                  coordinates={currDrawingCoordinates} 
+                  strokeColor="blue"
+                  strokeWidth={1}
+                />
+              </>
+            ) : (<></>)}
+          </MapView>
+        </View>
+        <View style={styles.panel}>
+          {drawing ? (
             <>
-              <Polygon 
-                coordinates={currDrawingCoordinates} 
-                strokeColor="blue"
-                strokeWidth={1}
-              />
+              <Button onPress={onEndDrawing} title="Click here to save the draw"/>
             </>
-          ) : (<></>)}
-        </MapView>
+          ) : (
+            <>
+              <Button onPress={onStartDrawing} title="Click here to draw the map"/>
+            </>
+          )}
+        </View>
       </View>
-      <View style={styles.panel}>
-        {drawing ? (
-          <>
-            <Button onPress={onEndDrawing} title="Click here to save the draw"/>
-          </>
-        ) : (
-          <>
-            <Button onPress={onStartDrawing} title="Click here to draw the map"/>
-          </>
-        )}
-      </View>
-    </View>
+      )}
+    </>
   )
 }
 

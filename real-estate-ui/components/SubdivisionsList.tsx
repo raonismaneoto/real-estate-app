@@ -31,8 +31,6 @@ const SubdivisionsList = () => {
       if (response.error) {
         alert('error on subdivisions retrieval')
       } else {
-        console.log(response);
-        console.log(response.data);
         setSubdivisions(response.response.data);
       }
     }
