@@ -154,7 +154,7 @@ impl SubdivisonRepo {
             subdivisions.push(Subdivision {
                 id: row.get("id"),
                 area: Box::new(locations),
-                name: row.get("name"),
+                name: row.get("s_name"),
             });
         }
 

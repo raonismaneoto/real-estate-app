@@ -50,37 +50,43 @@ const Navigation = ({ setArea, changeControl: setShowNavigation, extendedBehavio
   }, []);
 
   useEffect(() => {
-    if (!hasSearched) {
+    console.log(hasSearched);
+    console.log(currentLocation.latitude);
+    if (!hasSearched && currentLocation.latitude != 0) {
       searchSubdivisions();
     }
   }, [currentLocation])
 
   useEffect(() => {
-    if (!hasSearched) {
-      setHasSearched(true);
-    } 
+    if (searchQuery) {
+      if (!hasSearched) {
+        setHasSearched(true);
+      }
 
-    setTimeout(() => {
-      searchSubdivisions(searchQuery);
-    }, 3000);
-  }, [hasSearched])
+      setTimeout(() => {
+        searchSubdivisions(searchQuery);
+      }, 3000);
+    }
+  }, [searchQuery])
 
   const searchSubdivisions = async (searchTerm: string | undefined = undefined) => {
     let searchQueryParam = "";
     if (searchTerm) {
-      searchQueryParam = `name=${searchTerm}`
+      searchQueryParam = `name=${searchTerm}`;
     } else {
-      searchQueryParam = `lat=${currentLocation.latitude}&long=${currentLocation.longitude}`
+      searchQueryParam = `lat=${currentLocation.latitude}&long=${currentLocation.longitude}`;
     }
+    console.log(`subdivisions/search?${searchQueryParam}`);
+    const response : any = await noBodyRequest('GET', `subdivisions/search?${searchQueryParam}`);
 
-    const response : any = noBodyRequest('GET', `subdivisions/search?${searchQueryParam}`)
+    // console.log(response)
+    // console.log(response.error);
+    console.log(response.response.data);
+    // console.log(response.message);
 
-    console.log(response);
-    console.log(response.data);
-    console.log(response.message);
-
-    if (response.data) {
-      setSubdivisions(response.data);
+    if (response.response.data) {
+      setSubdivisions(response.response.data);
+      console.log(subdivisions);
     }
   };
 
@@ -141,17 +147,15 @@ const Navigation = ({ setArea, changeControl: setShowNavigation, extendedBehavio
               }}
               title="Your Location"
             />
-            {/* CONSIDER POLYGONS HERE, NOT MARKERS {subdivisions.map(each => (
-              <Marker 
+            {subdivisions.length > 0 && subdivisions.map(each => (
+              <Polygon
                 key={each.id}
-                coordinate={{
-                  latitude: initialRegion.latitude,
-                  longitude: initialRegion.longitude,
-                }}
-                title="Your Location"
+                coordinates={each.area.map(value => ({ latitude: value[0], longitude: value[1] } as LatLng))} 
+                strokeColor="blue"
+                strokeWidth={1}
               />
             )
-            )} */}
+            )}
             {currDrawingCoordinates.length > 0 ? (
               <>
                 <Polygon 
