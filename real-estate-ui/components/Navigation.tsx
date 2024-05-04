@@ -57,18 +57,6 @@ const Navigation = ({ setArea, changeControl: setShowNavigation, extendedBehavio
     }
   }, [currentLocation])
 
-  useEffect(() => {
-    if (searchQuery) {
-      if (!hasSearched) {
-        setHasSearched(true);
-      }
-
-      setTimeout(() => {
-        searchSubdivisions(searchQuery);
-      }, 3000);
-    }
-  }, [searchQuery])
-
   const searchSubdivisions = async (searchTerm: string | undefined = undefined) => {
     let searchQueryParam = "";
     if (searchTerm) {
@@ -125,9 +113,10 @@ const Navigation = ({ setArea, changeControl: setShowNavigation, extendedBehavio
           !extendedBehavior ? (
             <Searchbar
               placeholder="Search"
-              onChangeText={setSearchQuery}
+              onChangeText={(value) => {setSearchQuery(value); setHasSearched(true)}}
               value={searchQuery}
               style={styles.searchBar}
+              onIconPress={() => searchSubdivisions(searchQuery)}
             />
           ) : (<></>)
         }

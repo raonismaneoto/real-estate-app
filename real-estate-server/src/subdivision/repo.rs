@@ -71,7 +71,7 @@ impl SubdivisonRepo {
             FROM 
                 subdivision 
             WHERE
-                POSITION(LOWER($1) in LOWER(s_name));",
+                POSITION(LOWER($1) in LOWER(s_name)) > 0;",
         );
 
         let rows = self.storage.query(cmd, &[&name]).await?;
@@ -100,7 +100,7 @@ impl SubdivisonRepo {
             subdivisions.push(Subdivision {
                 id: row.get("id"),
                 area: Box::new(locations),
-                name: row.get("name"),
+                name: row.get("s_name"),
             });
         }
 
