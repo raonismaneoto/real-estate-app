@@ -64,142 +64,64 @@ impl SubdivisonRepo {
         self.storage.exec(cmd, &[&new_name, &id]).await
     }
 
-    pub async fn search_by_name(&self, name: String) -> Result<Vec<Subdivision>, DynAppError> {
+    pub async fn search_by_name(&self, name: String) -> Result<Vec<Row>, DynAppError> {
         let cmd = String::from(
             "
-            SELECT *
-            FROM 
-                subdivision 
-            WHERE
-                POSITION(LOWER($1) in LOWER(s_name)) > 0;",
-        );
-
-        let rows = self.storage.query(cmd, &[&name]).await?;
-
-        let select_subdivision_locations_cmd = String::from(
-            "SELECT 
-                location_id
+            SELECT 
+                s.s_name, s.id, array_agg(lat) as lats, array_agg(long) as longs 
             FROM
-                subdivision_location
-            WHERE 
-                subdivision_id = $1;",
+                subdivision s 
+                join subdivision_location sl on s.id = sl.subdivision_id
+                join app_location al on sl.location_id = al.id 
+            WHERE
+                POSITION(LOWER($1) in LOWER(s.s_name)) > 0;",
         );
 
-        let mut subdivisions: Vec<Subdivision> = vec![];
-
-        for row in rows.into_iter() {
-            let id: String = row.get("id");
-            let locations = self
-                .storage
-                .query(select_subdivision_locations_cmd.clone(), &[&id])
-                .await?
-                .into_iter()
-                .map(|row| row.get("location_id"))
-                .collect::<Vec<String>>();
-
-            subdivisions.push(Subdivision {
-                id: row.get("id"),
-                area: Box::new(locations),
-                name: row.get("s_name"),
-            });
-        }
-
-        Ok(subdivisions)
+         self.storage.query(cmd, &[&name]).await
     }
 
     pub async fn search_by_location(
         &self,
         coords: (f64, f64),
         radius: f64,
-    ) -> Result<Vec<Subdivision>, DynAppError> {
+    ) -> Result<Vec<Row>, DynAppError> {
         let cmd = String::from(
             "
             SELECT 
-                *
-            FROM 
-                subdivision sd
-            WHERE 
+                s.s_name, s.id, array_agg(lat) lats, array_agg(long) longs 
+            FROM
+                subdivision s 
+                join subdivision_location sl on s.id = sl.subdivision_id
+                join app_location al on sl.location_id = al.id
+            GROUP BY
+                s.s_name, s.id
+            HAVING 
                 (ST_DistanceSphere(
-                    ST_MakePoint((SELECT long FROM app_location where id = (SELECT location_id from subdivision_location where subdivision_id = sd.id LIMIT 1)), (SELECT lat FROM app_location where id = (SELECT location_id from subdivision_location where subdivision_id = sd.id LIMIT 1))),
+                    ST_MakePoint((array_agg(al.long))[1], (array_agg(al.lat))[1]),
                     ST_MakePoint($1, $2)
-                )) <= $3;",
+                )) <= $3;
+            "
         );
 
-        let subdivision_rows = self
+        self
             .storage
             .query(cmd, &[&coords.1, &coords.0, &radius])
-            .await?;
-
-        let select_subdivision_locations_cmd = String::from(
-            "SELECT 
-                    location_id
-                FROM
-                    subdivision_location
-                WHERE 
-                    subdivision_id = $1;",
-        );
-
-        let mut subdivisions: Vec<Subdivision> = vec![];
-
-        for row in subdivision_rows.into_iter() {
-            let id: String = row.get("id");
-            let locations = self
-                .storage
-                .query(select_subdivision_locations_cmd.clone(), &[&id])
-                .await?
-                .into_iter()
-                .map(|row| row.get("location_id"))
-                .collect::<Vec<String>>();
-
-            subdivisions.push(Subdivision {
-                id: row.get("id"),
-                area: Box::new(locations),
-                name: row.get("s_name"),
-            });
-        }
-
-        Ok(subdivisions)
+            .await
     }
 
-    pub async fn get_all(&self) -> Result<Vec<Subdivision>, DynAppError> {
+    pub async fn get_all_preview(&self) -> Result<Vec<Row>, DynAppError> {
         let cmd = String::from(
             "
-            SELECT *
+            SELECT 
+                s.s_name, s.id, count(l.l_name) as lots
             FROM 
-                subdivision;",
+                subdivision s 
+                left join lot l on l.subdivision_id = s.id 
+            GROUP BY 
+                s.s_name, s.id;"
         );
 
-        let rows = self.storage.query(cmd, &[]).await?;
-
-        let select_subdivision_locations_cmd = String::from(
-            "SELECT 
-                location_id
-            FROM
-                subdivision_location
-            WHERE 
-                subdivision_id = $1;",
-        );
-
-        let mut subdivisions: Vec<Subdivision> = vec![];
-
-        for row in rows.into_iter() {
-            let id: String = row.get("id");
-            let locations = self
-                .storage
-                .query(select_subdivision_locations_cmd.clone(), &[&id])
-                .await?
-                .into_iter()
-                .map(|inner_row| inner_row.get("location_id"))
-                .collect::<Vec<String>>();
-
-            subdivisions.push(Subdivision {
-                id: row.get("id"),
-                area: Box::new(locations),
-                name: row.get("s_name"),
-            });
-        }
-
-        Ok(subdivisions)
+        self.storage.query(cmd, &[]).await
     }
 
     // create a batch of lots assuming that the locations already exists
@@ -314,5 +236,23 @@ impl SubdivisonRepo {
         }
 
         Ok(lots)
+    }
+    
+    pub async fn get_subdivision_lots(&self, subdivision_id : String) -> Result<Vec<Row>, DynAppError> {
+        let cmd = String::from(
+            "
+            SELECT 
+                l.l_name, array_agg(lat) as lats, array_agg(long) as longs
+            FROM 
+                lot l join lot_location ll on l.l_name = ll.l_name and l.subdivision_id = ll.subdivision_id 
+                join app_location al on al.id = ll.location_id
+            WHERE 
+                l.subdivision_id = $1
+            GROUP by 
+                l.l_name;
+            "
+        );
+
+        self.storage.query(cmd, &[&subdivision_id]).await
     }
 }

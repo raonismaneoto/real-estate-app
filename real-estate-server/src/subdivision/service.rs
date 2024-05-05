@@ -7,7 +7,7 @@ use std::{
 use tokio::try_join;
 
 use crate::{
-    api_contracts::{lot_dto::LotDto, subdivision_dto::SubdivisionDto},
+    api_contracts::{lot_dto::LotDto, subdivision_dto::SubdivisionDto, subdivision_preview::SubdivisionPreview},
     database::storage::{self, Storage},
     error::app_error::{AppError, DynAppError},
     location::{location::Location, service::LocationService},
@@ -126,15 +126,43 @@ impl SubdivisionService {
 
     // pub async fn update(&self, id: String) -> Result<String, DynAppError> {}
 
-    pub async fn search_by_name(&self, name: String) -> Result<Vec<Subdivision>, DynAppError> {
-        self.repo.search_by_name(name).await
+    pub async fn search_by_name(&self, name: String) -> Result<Vec<SubdivisionDto>, DynAppError> {
+        let rows = self.repo.search_by_name(name).await?;
+
+        let mut dtos: Vec<SubdivisionDto> = vec![];
+        for row in rows.iter() {
+            dtos.push(
+                SubdivisionDto {
+                    area: Box::new(assemble_area(row.get("lats"), row.get("longs"))),
+                    id: row.get("id"),
+                    name: row.get("s_name"),
+                    lots: None
+                }
+            )
+        }
+
+        Ok(dtos)
     }
 
     pub async fn search_by_location(
         &self,
         coords: (f64, f64),
-    ) -> Result<Vec<Subdivision>, DynAppError> {
-        self.repo.search_by_location(coords, 5000.0).await
+    ) -> Result<Vec<SubdivisionDto>, DynAppError> {
+        let rows = self.repo.search_by_location(coords, 5000.0).await?;
+
+        let mut dtos: Vec<SubdivisionDto> = vec![];
+        for row in rows.iter() {
+            dtos.push(
+                SubdivisionDto {
+                    area: Box::new(assemble_area(row.get("lats"), row.get("longs"))),
+                    id: row.get("id"),
+                    name: row.get("s_name"),
+                    lots: None
+                }
+            )
+        }
+
+        Ok(dtos)
     }
 
     // TODO: the repo and the service are calling the location service to retrieve the location
@@ -182,7 +210,47 @@ impl SubdivisionService {
     }
 
     // TODO: implement pagination
-    pub async fn get_all(&self) -> Result<Vec<Subdivision>, DynAppError> {
-        self.repo.get_all().await
+    pub async fn get_all(&self) -> Result<Vec<SubdivisionPreview>, DynAppError> {
+        let rows = self.repo.get_all_preview().await?;
+
+        let mut previews: Vec<SubdivisionPreview> = vec![];
+        for row in rows.iter() {
+            previews.push(
+                SubdivisionPreview {
+                    id: row.get("id"),
+                    name: row.get("s_name"),
+                    lots_amount: row.get("lots")
+                }
+            )
+        }
+
+        Ok(previews)
     }
+
+    pub async fn get_subdivision_lots(&self, subdivision_id : String) -> Result<Vec<LotDto>, DynAppError> {
+        let lot_rows = self.repo.get_subdivision_lots(subdivision_id.clone()).await?;
+        
+        let mut lots: Vec<LotDto> = vec![];
+        for row in lot_rows.into_iter() {
+            let lot_name: String = row.get("l_name");
+            lots.push(
+                LotDto {
+                    id: format!("{}-{}", lot_name, subdivision_id.clone()),
+                    area: Box::new(assemble_area(row.get("lats"), row.get("longs"))),
+                    name: lot_name,
+                    subdivision_id: subdivision_id.clone()
+                }
+            )
+        }
+    
+        Ok(lots)
+    }
+}
+
+fn assemble_area(lats: Vec<f64>, longs: Vec<f64>) -> Vec<(f64, f64)> {
+    let mut area: Vec<(f64, f64)> = vec![];
+    for (pos, value) in lats.into_iter().enumerate() {
+        area.push((value, longs[pos]));
+    }
+    area
 }

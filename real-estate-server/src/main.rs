@@ -17,10 +17,10 @@ pub mod subdivision;
 
 use handlers::subdivision::{
     lot_creation_handler, lots_creation_handler, subdivision_creation_handler,
-    subdivision_listing_handler, subdivision_searching_handler,
+    subdivision_listing_handler, subdivision_searching_handler, subdivision_lots_retrieval_handler
 };
 
-use crate::app_state::app_state::AppState;
+use crate::{app_state::app_state::AppState};
 
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
@@ -54,6 +54,10 @@ async fn start_web_server() -> Result<(), Error> {
         .route(
             "/api/real-estate/subdivisions",
             get(subdivision_listing_handler),
+        )
+        .route(
+            "/api/real-estate/subdivisions/:subdivision_id/lots",
+            get(subdivision_lots_retrieval_handler),
         )
         // .route_layer(map_request_with_state(app_state.clone(), auth_handler))
         .with_state(app_state);

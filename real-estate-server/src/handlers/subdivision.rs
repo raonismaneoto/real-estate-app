@@ -66,19 +66,7 @@ pub async fn lots_creation_handler(
 pub async fn subdivision_listing_handler(State(app_state): State<Arc<AppState>>) -> Response {
     match app_state.subdivision_service.get_all().await {
         Ok(subdivisions) => {
-            let mut dtos: Vec<SubdivisionDto> = vec![];
-
-            for subdivision in subdivisions.iter() {
-                if let Ok(dto) = app_state
-                    .subdivision_service
-                    .to_dto(subdivision.clone())
-                    .await
-                {
-                    dtos.push(dto);
-                }
-            }
-
-            Json(dtos).into_response()
+            Json(subdivisions).into_response()
         }
         Err(err) => get_error_response(err),
     }
@@ -94,19 +82,7 @@ pub async fn subdivision_searching_handler(
 
             match maybe_subdivisions {
                 Ok(subdivisions) => {
-                    let mut dtos: Vec<SubdivisionDto> = vec![];
-
-                    for subdivision in subdivisions.iter() {
-                        if let Ok(dto) = app_state
-                            .subdivision_service
-                            .to_dto(subdivision.clone())
-                            .await
-                        {
-                            dtos.push(dto);
-                        }
-                    }
-
-                    return Json(dtos).into_response();
+                    return Json(subdivisions).into_response();
                 }
                 Err(err) => return get_error_response(err),
             };
@@ -114,7 +90,9 @@ pub async fn subdivision_searching_handler(
         None => match params.lat {
             None => {
                 return get_error_response(Box::new(DefaultAppError {
-                    message: Some(String::from("Invalid searching params. Missing name and geolocation data")),
+                    message: Some(String::from(
+                        "Invalid searching params. Missing name and geolocation data",
+                    )),
                     status_code: 500,
                 }))
             }
@@ -128,19 +106,7 @@ pub async fn subdivision_searching_handler(
 
                     match maybe_subdivisions {
                         Ok(subdivisions) => {
-                            let mut dtos: Vec<SubdivisionDto> = vec![];
-
-                            for subdivision in subdivisions.iter() {
-                                if let Ok(dto) = app_state
-                                    .subdivision_service
-                                    .to_dto(subdivision.clone())
-                                    .await
-                                {
-                                    dtos.push(dto);
-                                }
-                            }
-
-                            return Json(dtos).into_response();
+                            return Json(subdivisions).into_response();
                         }
                         Err(err) => return get_error_response(err),
                     }
@@ -153,6 +119,18 @@ pub async fn subdivision_searching_handler(
                 }
             },
         },
+    }
+}
+
+pub async fn subdivision_lots_retrieval_handler(
+    State(app_state): State<Arc<AppState>>,
+    Path(subdivision_id): Path<String>,
+) -> Response {
+    match app_state.subdivision_service.get_subdivision_lots(subdivision_id).await {
+        Ok(lots) => {
+            Json(lots).into_response()
+        }
+        Err(err) => get_error_response(err),
     }
 }
 
