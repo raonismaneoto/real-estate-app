@@ -3,7 +3,7 @@ import axios, { Method } from "axios";
 // import * as Keychain from 'react-native-keychain';
 
 
-const BACKEND_URL = 'http://192.168.0.7:5000/api/real-estate';
+const BACKEND_URL = 'http://192.168.0.110:5000/api/real-estate';
 
 const httpMethodsMap : any = {
     'GET': axios.get,

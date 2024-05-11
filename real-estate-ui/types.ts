@@ -5,6 +5,12 @@ interface Subdivision {
     lots: Lot[]
 };
 
+interface SubdivisionPreview {
+    name: string,
+    id: string,
+    lots_amount: number
+};
+
 interface Lot {
     id: string,
     name: string,

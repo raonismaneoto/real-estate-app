@@ -12,7 +12,6 @@ pub mod database;
 pub mod error;
 pub mod handlers;
 pub mod location;
-pub mod requests;
 pub mod subdivision;
 
 use handlers::subdivision::{
@@ -62,7 +61,7 @@ async fn start_web_server() -> Result<(), Error> {
         // .route_layer(map_request_with_state(app_state.clone(), auth_handler))
         .with_state(app_state);
 
-    let addr = SocketAddr::from(([192, 168, 0, 7], 5000));
+    let addr = SocketAddr::from(([192, 168, 0, 110], 5000));
     let listener = TcpListener::bind(&addr).await.unwrap();
 
     println!("listening on {}", addr);

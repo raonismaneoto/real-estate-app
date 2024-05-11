@@ -15,7 +15,7 @@ const SubdivisionsList = () => {
   const [subdvisionName, setSubdivisionName] = useState('');
   const [subdvisionArea, setSubdivisionArea] = useState<[number,number][]>([]);
   const [showNavigation, setShowNavigation] = useState(false);
-  const [subdivisions, setSubdivisions] = useState<Subdivision[]>([]);
+  const [subdivisions, setSubdivisions] = useState<SubdivisionPreview[]>([]);
 
   const from = page * itemsPerPage;
   const to = Math.min((page + 1) * itemsPerPage, subdivisions.length);
@@ -50,7 +50,8 @@ const SubdivisionsList = () => {
         alert('error on creation')
       } else {
         alert('criado com sucesso')
-        setSubdivisions([...subdivisions, subdivision])
+        const preview : SubdivisionPreview = {name : subdvisionName, id: subdvisionName, lots_amount:0};
+        setSubdivisions([...subdivisions, preview])
       }
 
       setVisible(false);
@@ -80,7 +81,7 @@ const SubdivisionsList = () => {
               {subdivisions.slice(from, to).map((item) => (
                   <DataTable.Row key={item.id}>
                   <DataTable.Cell>{item.name}</DataTable.Cell>
-                  <DataTable.Cell numeric>{item.lots.length}</DataTable.Cell>
+                  <DataTable.Cell numeric>{item.lots_amount}</DataTable.Cell>
                   </DataTable.Row>
               ))}
 

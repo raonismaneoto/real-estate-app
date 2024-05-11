@@ -4,5 +4,5 @@ use serde::{Deserialize, Serialize};
 pub struct SubdivisionPreview {
     pub id: String,
     pub name: String,
-    pub lots_amount: i32,
+    pub lots_amount: i64,
 }
