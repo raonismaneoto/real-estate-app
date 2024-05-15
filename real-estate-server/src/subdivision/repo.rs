@@ -129,10 +129,10 @@ impl SubdivisonRepo {
         let mut lot_values = String::from("VALUES\n   ");
         let mut lot_locations_values = String::from("VALUES\n   ");
         for lot in lots.into_iter() {
-            lot_values += format!("(${}, ${}),\n", lot.name, lot.subdivision_id).as_str();
+            lot_values += format!("('{}', '{}'),\n", lot.name, lot.subdivision_id).as_str();
             for location_id in lot.clone().area.into_iter() {
                 lot_locations_values += format!(
-                    "(${}, ${}, ${}),\n",
+                    "('{}', '{}', '{}'),\n",
                     lot.name, lot.subdivision_id, location_id
                 )
                 .as_str();
@@ -164,7 +164,7 @@ impl SubdivisonRepo {
         let mut lot_locations_values = String::from("VALUES\n   ");
         for location_id in lot.area.into_iter() {
             lot_locations_values +=
-                format!("({}, {}, {}),\n", lot.name, lot.subdivision_id, location_id).as_str();
+                format!("('{}', '{}', '{}'),\n", lot.name, lot.subdivision_id, location_id).as_str();
         }
 
         lot_locations_values = lot_locations_values.trim_end().to_string();
@@ -175,11 +175,11 @@ impl SubdivisonRepo {
                 lot 
                     (l_name, subdivision_id)
             VALUES
-                ({}, {});
+                ('{}', '{}');
                 
             INSERT INTO
                 lot_location
-                    (l_name, subdivison_id, location_id)
+                    (l_name, subdivision_id, location_id)
             {};",
             lot.name, lot.subdivision_id, lot_locations_values
         );

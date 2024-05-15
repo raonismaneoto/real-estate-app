@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { Button, StyleSheet, View } from "react-native";
 import MapView, { LatLng, Marker, Polygon, Region } from "react-native-maps";
-import { Searchbar } from 'react-native-paper';
+import { Dialog, Divider, Portal, Searchbar, Text, TextInput } from 'react-native-paper';
 import * as Location from "expo-location";
-import { noBodyRequest } from "../services/httpService";
+import { noBodyRequest, request } from "../services/httpService";
 
 interface NavigationProps {
   setArea?: (area: [number, number][]) => void,
@@ -21,6 +21,12 @@ const Navigation = ({ setArea, changeControl: setShowNavigation, extendedBehavio
   const [initialRegion, setInitialRegion] = useState<Region>({latitude: 0, longitude: 0, latitudeDelta: 0, longitudeDelta:0});
   const [subdivisions, setSubdivisions] = useState<Subdivision[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  const [selectedSubdivision, setSelectedSubdivision] = useState<Subdivision|undefined>(undefined);
+  const [lotDrawing, setLotDrawing] = useState(false);
+  const [showLotCreationDialog, setShowLotCreationDialog] = useState(false);
+  const [creatingLotName, setCreatingLotName] = useState("");
+  const [mapRef, setMapRef] = useState<MapView | null>(null);
 
   useEffect(() => {
     const getLocation = async () => {
@@ -88,6 +94,25 @@ const Navigation = ({ setArea, changeControl: setShowNavigation, extendedBehavio
     setDrawing(true)
   };
 
+  const saveLot = async () => {
+    const reqBody = {
+      area: currDrawingCoordinates.map(coords => [coords.latitude, coords.longitude]),
+      name: creatingLotName,
+      subdivision_id: selectedSubdivision?.id,
+      id: creatingLotName
+    }
+
+    const result = await request('POST', `subdivisions/${selectedSubdivision?.id}/lots`, reqBody);
+
+    if (result.error) {
+      alert(result.response.data);
+    } else {
+      alert('Lot created successfully');
+    }
+
+    clearLotCreation();
+  }
+
   const onEndDrawing = () => {
     setRotate(true); 
     setScroll(true); 
@@ -100,10 +125,42 @@ const Navigation = ({ setArea, changeControl: setShowNavigation, extendedBehavio
       return;
     }
 
+    if (lotDrawing) {
+      // must open a pop-up to get lot name and confirm the creation request
+      setShowLotCreationDialog(true);
+      return;
+    }
+
     setCurrentDrawingCoordinates([]);
   };
 
   const isInitialRegionSet = () => initialRegion.latitude !== 0 && initialRegion.longitude !== 0;
+
+  const openSubdivisionDetails = (subdivision: Subdivision) => {
+    console.log("oi")
+    setSelectedSubdivision(subdivision);
+    setShowDetails(true);
+  }
+
+  const drawLot = () => {
+    setShowDetails(false);
+    console.log(selectedSubdivision?.area[0]);
+    const region : Region = {
+      latitude: selectedSubdivision?.area[0][0] ? selectedSubdivision?.area[0][0] : currentLocation.latitude, 
+      longitude: selectedSubdivision?.area[0][1] ? selectedSubdivision?.area[0][1] : currentLocation.longitude,
+      latitudeDelta: 0.001, longitudeDelta: 0.001
+    };
+    mapRef?.animateToRegion(region, 2000);
+    setLotDrawing(true);
+  }
+
+  const clearLotCreation = () => {
+    setCurrentDrawingCoordinates([]);
+    setCreatingLotName("");
+    setSelectedSubdivision(undefined);
+    setLotDrawing(false);
+    setShowLotCreationDialog(false);
+  }
 
   return (
     <>
@@ -127,12 +184,13 @@ const Navigation = ({ setArea, changeControl: setShowNavigation, extendedBehavio
             rotateEnabled={rotate}
             scrollEnabled={scroll}
             initialRegion={initialRegion}
+            ref={ref => setMapRef(ref)}
           >
             <Marker 
               key="main"
               coordinate={{
-                latitude: initialRegion.latitude,
-                longitude: initialRegion.longitude,
+                latitude: currentLocation.latitude,
+                longitude: currentLocation.longitude,
               }}
               title="Your Location"
             />
@@ -142,6 +200,8 @@ const Navigation = ({ setArea, changeControl: setShowNavigation, extendedBehavio
                 coordinates={each.area.map(value => ({ latitude: value[0], longitude: value[1] } as LatLng))} 
                 strokeColor="blue"
                 strokeWidth={1}
+                onPress={() => openSubdivisionDetails(each)}
+                tappable={true}
               />
             )
             )}
@@ -156,17 +216,60 @@ const Navigation = ({ setArea, changeControl: setShowNavigation, extendedBehavio
             ) : (<></>)}
           </MapView>
         </View>
-        <View style={styles.panel}>
-          {drawing ? (
-            <>
-              <Button onPress={onEndDrawing} title="Click here to save the draw"/>
-            </>
-          ) : (
-            <>
-              <Button onPress={onStartDrawing} title="Click here to draw the map"/>
-            </>
-          )}
-        </View>
+        {lotDrawing? 
+          (
+            <View style={styles.panel}>
+              {drawing ? (
+                <>
+                  <Button onPress={onEndDrawing} title="Click here to save the draw"/>
+                </>
+              ) : (
+                <>
+                  <Button onPress={onStartDrawing} title="Click here to draw the map"/>
+                </>
+              )}
+            </View>
+          ) 
+          : 
+          (<></>)
+        }
+        
+        {showDetails ? (
+          <Portal>
+            <Dialog visible={showDetails} onDismiss={() => setShowDetails(false)}>
+              <Dialog.Title>Subdivision Details</Dialog.Title>
+              <Dialog.Content>
+                <Text variant="headlineSmall">Name: {selectedSubdivision?.name}</Text>
+                <Divider />
+                <Text variant="headlineSmall">Lots amount: {selectedSubdivision?.lots?.length || 0}</Text>
+              </Dialog.Content>
+              <Dialog.Actions>
+                <Button onPress={() => setShowDetails(false)} title="Close"/>
+                <Divider />
+                <Button onPress={drawLot} title="Create lot"/>
+              </Dialog.Actions>
+            </Dialog>
+          </Portal>
+        ) : (<></>)}
+
+        {showLotCreationDialog ? (
+          <Portal>
+            <Dialog visible={showLotCreationDialog} onDismiss={() => setShowLotCreationDialog(false)}>
+              <Dialog.Title>Lot Creation</Dialog.Title>
+              <Dialog.Content>
+                <TextInput 
+                  label="Lot Name/Id"
+                  value={creatingLotName}
+                  onChangeText={text => setCreatingLotName(text)}/>
+              </Dialog.Content>
+              <Dialog.Actions>
+                <Button onPress={() => clearLotCreation()} title="Close"/>
+                <Divider />
+                <Button onPress={async () => await saveLot()} title="Create lot"/>
+              </Dialog.Actions>
+            </Dialog>
+        </Portal>
+        ) : (<></>)}
       </View>
       )}
     </>

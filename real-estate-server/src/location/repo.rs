@@ -82,7 +82,8 @@ impl LocationRepo {
                 app_location 
                     (id, lat, long)
                 VALUES
-                    ($1, $2, $3);",
+                    ($1, $2, $3)
+                on conflict do nothing;",
         );
 
         self.storage
