@@ -27,6 +27,8 @@ const Navigation = ({ setArea, changeControl: setShowNavigation, extendedBehavio
   const [showLotCreationDialog, setShowLotCreationDialog] = useState(false);
   const [creatingLotName, setCreatingLotName] = useState("");
   const [mapRef, setMapRef] = useState<MapView | null>(null);
+  const [showSelectedSubdivisionLots, setShowSelectedSubdivisionLots] = useState(false);
+  const [selectedLots, setSelectedLots] = useState<Lot[]>([]);
 
   useEffect(() => {
     const getLocation = async () => {
@@ -70,7 +72,6 @@ const Navigation = ({ setArea, changeControl: setShowNavigation, extendedBehavio
     } else {
       searchQueryParam = `lat=${currentLocation.latitude}&long=${currentLocation.longitude}`;
     }
-    console.log(`subdivisions/search?${searchQueryParam}`);
     const response : any = await noBodyRequest('GET', `subdivisions/search?${searchQueryParam}`);
 
     // console.log(response)
@@ -162,6 +163,18 @@ const Navigation = ({ setArea, changeControl: setShowNavigation, extendedBehavio
     setShowLotCreationDialog(false);
   }
 
+  const showLots = async () => {
+    const lotsResponse = await noBodyRequest('GET', `subdivisions/${selectedSubdivision?.id}/lots`);
+
+    if (lotsResponse.error) {
+      alert('error on lots retrieval')
+    } else {
+      setSelectedLots(lotsResponse.response.data);
+      setShowSelectedSubdivisionLots(true);
+      setShowDetails(false);
+    }
+  }
+
   return (
     <>
       {isInitialRegionSet() && (
@@ -205,6 +218,16 @@ const Navigation = ({ setArea, changeControl: setShowNavigation, extendedBehavio
               />
             )
             )}
+            {showSelectedSubdivisionLots ? selectedLots.length > 0 && selectedLots.map(selectedLot => (
+              <Polygon
+                key={selectedLot.id}
+                coordinates={selectedLot.area.map(value => ({ latitude: value[0], longitude: value[1] } as LatLng))} 
+                strokeColor="red"
+                strokeWidth={1}
+                onPress={() => alert(selectedLot.name)}
+                tappable={true}
+              />
+            )) : (<></>)}
             {currDrawingCoordinates.length > 0 ? (
               <>
                 <Polygon 
@@ -216,8 +239,6 @@ const Navigation = ({ setArea, changeControl: setShowNavigation, extendedBehavio
             ) : (<></>)}
           </MapView>
         </View>
-        {lotDrawing? 
-          (
             <View style={styles.panel}>
               {drawing ? (
                 <>
@@ -229,10 +250,7 @@ const Navigation = ({ setArea, changeControl: setShowNavigation, extendedBehavio
                 </>
               )}
             </View>
-          ) 
-          : 
-          (<></>)
-        }
+        
         
         {showDetails ? (
           <Portal>
@@ -245,6 +263,8 @@ const Navigation = ({ setArea, changeControl: setShowNavigation, extendedBehavio
               </Dialog.Content>
               <Dialog.Actions>
                 <Button onPress={() => setShowDetails(false)} title="Close"/>
+                <Divider />
+                <Button onPress={async () => await showLots()} title="Show lots"/>
                 <Divider />
                 <Button onPress={drawLot} title="Create lot"/>
               </Dialog.Actions>
